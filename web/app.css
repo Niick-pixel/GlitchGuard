@@ -563,6 +563,107 @@ a.linkbtn { text-decoration: none; display: inline-flex; align-items: center; }
 
 /* The pinned list is one entry per line, so it needs to be a textarea while
    still looking like the single-line inputs beside it. */
+/* Update ready: quiet until there is something to say, then hard to miss
+   without being alarming - an amber pill, not a red badge. */
+.updatepill {
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  color: #2a1b06;
+  background: linear-gradient(135deg, var(--amber), var(--amber-deep));
+  box-shadow: 0 6px 18px -6px rgba(233, 162, 60, .6);
+  transition: transform .3s var(--spring), filter .2s var(--ease);
+}
+html[data-mode="light"] .updatepill { color: #fdf6ea; }
+.updatepill:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.updatepill:disabled { opacity: .7; cursor: default; transform: none; }
+
+/* ---------- watched deals: gold ----------
+   A keyword match or a pinned product. It replaces the rainbow rather than
+   joining it: two kinds of glow on one card would say nothing, and something
+   you asked for by name matters more than a big number.
+
+   Gold is held as RGB triples, like the rainbow, so light mode can swap in a
+   deeper gold that still reads on a pale ground. The halo reuses the glow
+   strength setting for its reach, so the two stay in proportion. */
+:root {
+  --gold: 246 196 82;
+  --gold-deep: 214 152 32;
+  --gold-rim: rgba(255, 216, 128, .9);
+}
+/* On a cream ground the halo needs saturation, not darkness: a dark gold
+   reads as a smudge of shade, while a vivid amber-gold still reads as light.
+   The rim stays deep so the card edge keeps its definition. */
+html[data-mode="light"] {
+  --gold: 240 172 12;
+  --gold-deep: 226 138 0;
+  --gold-rim: rgba(176, 116, 0, .95);
+}
+
+.card.watched {
+  border-color: var(--gold-rim);
+}
+
+/* Halo: a tight bright ring just outside the border plus two wider blooms.
+   It breathes, but only in opacity on its own layer, which the compositor
+   animates without repainting anything. */
+.card.watched::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 1px var(--gold-rim),
+    0 0 calc(var(--glow-blur) * .6) calc(var(--glow-spread) + 3px) rgb(var(--gold) / .62),
+    0 0 calc(var(--glow-blur) * 1.4) calc(var(--glow-spread) + 6px) rgb(var(--gold-deep) / .38);
+  animation: goldBreathe 2.6s ease-in-out infinite;
+  will-change: opacity;
+}
+
+/* Gold is close to the cream ground in lightness, so the same alphas that
+   glow on a dark page all but vanish on a light one. Light mode gets a
+   thicker rim and roughly twice the bloom to stay unmistakable. */
+html[data-mode="light"] .card.watched::before {
+  box-shadow:
+    0 0 0 2px var(--gold-rim),
+    0 0 calc(var(--glow-blur) * .7) calc(var(--glow-spread) + 8px) rgb(var(--gold) / .95),
+    0 0 calc(var(--glow-blur) * 1.6) calc(var(--glow-spread) + 14px) rgb(var(--gold-deep) / .7);
+}
+
+@keyframes goldBreathe {
+  0%, 100% { opacity: .72; }
+  50%      { opacity: 1; }
+}
+
+/* The light reaches the front of the card too, from the top edge, the way
+   the rainbow glow lights its corners. Under the content, never over it. */
+.card.watched::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: .16;
+  mix-blend-mode: var(--glow-front-blend);
+  background:
+    radial-gradient(90% 55% at 50% 0%, rgb(var(--gold)) 0%, transparent 70%),
+    radial-gradient(60% 40% at 50% 100%, rgb(var(--gold-deep)) 0%, transparent 70%);
+}
+
+.card.watched:hover::before { animation-play-state: paused; opacity: 1; }
+
+html.unfocused .card.watched::before { animation-play-state: paused; }
+html.lowpower .card.watched::before { animation: none; opacity: .9; }
+@media (prefers-reduced-motion: reduce) {
+  .card.watched::before { animation: none; opacity: .9; }
+}
+
 /* ---------- low power ----------
    Two levels. "unfocused" is automatic and temporary: the window is in the
    background, so nothing needs to move. "lowpower" is the user's choice and

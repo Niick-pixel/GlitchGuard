@@ -18,7 +18,8 @@ def main():
             port = candidate
             break
         except OSError as exc:
-            if exc.errno not in (errno.EADDRINUSE, 10048):
+            # 10013 is what Windows reports when the port is held exclusively.
+            if exc.errno not in (errno.EADDRINUSE, errno.EACCES, 10048, 10013):
                 raise
     if httpd is None:
         print("Could not bind a local port in 8765-8785.", file=sys.stderr)

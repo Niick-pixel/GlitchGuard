@@ -60,6 +60,16 @@ $zip = Join-Path $root "dist\GlitchGuard-$version-portable.zip"
 Remove-Item $zip -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $work "dist\GlitchGuard") -DestinationPath $zip -CompressionLevel Optimal
 
+# Sign it. Installed copies only auto-install a release whose .sig verifies
+# against the public key built into them; see tools\sign.py.
+Remove-Item "$zip.sig" -ErrorAction SilentlyContinue
+if (Test-Path (Join-Path $env:USERPROFILE ".glitchguard-signing\release-key.pem")) {
+    & $py (Join-Path $root "tools\sign.py") sign $zip $version
+    if ($LASTEXITCODE -ne 0) { throw "Signing failed" }
+} else {
+    Write-Warning "No signing key on this PC: the zip is unsigned, and installed copies will not install it automatically."
+}
+
 $app = (Get-ChildItem $out -Recurse | Where-Object { $_.FullName -notlike "*\data\*" } | Measure-Object Length -Sum).Sum / 1MB
 Write-Host ("Done: {0}\GlitchGuard.exe  (app {1:N0} MB)" -f $out, $app)
 Write-Host ("Shareable zip, no personal data: {0}  ({1:N0} MB)" -f $zip, ((Get-Item $zip).Length / 1MB))

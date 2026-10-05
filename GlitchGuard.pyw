@@ -6,7 +6,7 @@ version, use `python -m glitchguard` or the run-windows.bat launcher.
 """
 import sys
 
-from glitchguard.desktop import main
+from glitchguard.desktop import run_app
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_app())

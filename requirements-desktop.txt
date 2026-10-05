@@ -4,4 +4,6 @@ pywebview>=6.2
 pystray>=0.19
 pillow>=10
 windows-toasts>=1.3
+# Ed25519 signature checks on updates, and signing them in tools/sign.py.
+cryptography>=42
 pyinstaller>=6.20

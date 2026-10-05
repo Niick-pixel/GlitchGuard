@@ -257,7 +257,13 @@ function buildCard(deal) {
   const card = el("article", "card");
   card.dataset.id = deal.id;
   // Anything at or above this discount gets the aurora backlight.
-  if (settings.card_glow !== false && (deal.discount_pct || 0) >= GLOW_DISCOUNT) {
+  // Something you asked for by name outranks a big discount: it gets the
+  // gold glow instead of the rainbow, so it is the first thing you see.
+  if (deal.watched) {
+    card.classList.add("watched");
+    card.title = deal.watched === "pinned"
+      ? "Pinned product" : `Matches your watch word \u201c${deal.watched}\u201d`;
+  } else if (settings.card_glow !== false && (deal.discount_pct || 0) >= GLOW_DISCOUNT) {
     card.classList.add("glow");
   }
 
@@ -708,6 +714,7 @@ function cardSignature(d) {
   return [
     d.title, d.price, d.list_price, d.discount_pct, d.savings,
     d.score, d.tier, d.is_new, d.image, d.retailer, d.source, d.promo_code,
+    d.watched,
   ].join("");
 }
 
@@ -774,6 +781,7 @@ function render(deals) {
 }
 
 function applyStatus(status) {
+  if (status.update) renderUpdate(status.update);
   if (status.desktop && !desktopInfo) {
     desktopInfo = status.desktop;
     $("desktopopts").classList.remove("hidden");
@@ -1161,6 +1169,7 @@ function applySettings(cfg) {
     $("autostart").checked = cfg.autostart !== false;
     $("nativetoasts").checked = cfg.native_toasts !== false;
     $("checkupdates").checked = cfg.check_updates !== false;
+    $("autoupdate").checked = cfg.auto_update !== false;
     applyLowPower(!!cfg.low_power);
     refreshVersion();
     $("screenglowint").value = String(cfg.screen_glow_intensity ?? 45);
@@ -1510,32 +1519,89 @@ $("testtoast").addEventListener("click", async () => {
 
 ["autostart", "nativetoasts"].forEach((id) =>
   $(id).addEventListener("change", saveSettings));
-$("checkupdates").addEventListener("change", () => {
-  saveSettings();
-  refreshVersion();
+$("checkupdates").addEventListener("change", saveSettings);
+$("autoupdate").addEventListener("change", saveSettings);
+
+$("checknow").addEventListener("click", async () => {
+  $("checknow").disabled = true;
+  try {
+    await api("/api/update/check", { method: "POST", body: "{}" });
+    $("versionline").textContent = "Checking for updates…";
+  } catch {}
+  setTimeout(() => { $("checknow").disabled = false; }, 4000);
 });
+
+async function restartToUpdate() {
+  ["updatepill", "updaterestart"].forEach((id) => { $(id).disabled = true; });
+  $("updatepill").textContent = "Installing…";
+  try {
+    const res = await api("/api/update/apply", { method: "POST", body: "{}" });
+    if (!res.ok) throw new Error(res.note || "could not install");
+    // The app closes now; the installer reopens the new version.
+  } catch (err) {
+    $("updatepill").textContent = "Update ready · Restart";
+    ["updatepill", "updaterestart"].forEach((id) => { $(id).disabled = false; });
+    $("versionline").textContent = `Could not install: ${err.message}`;
+  }
+}
+$("updatepill").addEventListener("click", restartToUpdate);
+$("updaterestart").addEventListener("click", restartToUpdate);
 
 /* ---------- version & updates ---------- */
 async function refreshVersion() {
-  const line = $("versionline");
   try {
-    const v = await api("/api/version");
-    line.replaceChildren();
-    line.append(`GlitchGuard ${v.current}`);
-    if (v.newer && v.url) {
-      const link = el("a", "updatelink", ` - version ${v.latest} is available`);
-      link.href = safeUrl(v.url) || "#";
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      line.append(link);
-    } else if (v.checked && !v.error) {
-      line.append(" - up to date");
-    } else if (v.error) {
-      line.append(` - could not check (${v.error})`);
-    }
+    renderUpdate(await api("/api/version"));
   } catch {
-    line.textContent = "Version unknown";
+    $("versionline").textContent = "Version unknown";
   }
+}
+
+let lastUpdateKey = "";
+
+/* One place that turns the updater's state into words, called from every
+   status poll so a download's progress moves on screen. */
+function renderUpdate(u) {
+  if (!u) return;
+  const key = [u.state, u.progress, u.ready, u.latest, u.error, u.newer].join("|");
+  const canInstall = !!u.can_install;
+  const ready = u.state === "ready" && u.ready && canInstall;
+  $("updatepill").classList.toggle("hidden", !ready);
+  $("updaterestart").classList.toggle("hidden", !ready);
+  $("autoupdaterow").classList.toggle("hidden", !canInstall);
+  if (key === lastUpdateKey) return;
+  lastUpdateKey = key;
+
+  const line = $("versionline");
+  line.replaceChildren(`GlitchGuard ${u.current}`);
+  const last = u.last_install;
+  if (last && last.ok && last.version === u.current) {
+    line.append(" - just updated");
+  }
+  if (u.state === "downloading") {
+    line.append(` - downloading ${u.latest}${u.progress != null ? ` (${u.progress}%)` : ""}`);
+  } else if (ready) {
+    line.append(` - version ${u.ready} is downloaded, verified and ready to install`);
+  } else if (u.state === "checking") {
+    line.append(" - checking…");
+  } else if (u.state === "error" && u.error) {
+    line.append(` - ${u.error}`);
+    if (u.url) line.append(" ", releaseLink("download it by hand", u.url));
+  } else if (u.newer && u.url) {
+    // A plain browser run, or auto-install switched off: the link is all.
+    line.append(" - ", releaseLink(`version ${u.latest} is available`, u.url));
+  } else if (u.checked && !u.error) {
+    line.append(" - up to date");
+  } else if (u.error) {
+    line.append(` - could not check (${u.error})`);
+  }
+}
+
+function releaseLink(text, url) {
+  const link = el("a", "updatelink", text);
+  link.href = safeUrl(url) || "#";
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  return link;
 }
 
 /* ---------- export ---------- */
@@ -1595,9 +1661,10 @@ function saveSettings() {
     autostart: $("autostart").checked,
     native_toasts: $("nativetoasts").checked,
     check_updates: $("checkupdates").checked,
+    auto_update: $("autoupdate").checked,
     ...selectedSources(),
   };
-  api("/api/settings", { method: "POST", body: JSON.stringify(payload) }).catch(() => {});
+  return api("/api/settings", { method: "POST", body: JSON.stringify(payload) }).catch(() => {});
 }
 
 // Watch words only affect future alerts, so a debounced save is enough.
@@ -1634,7 +1701,9 @@ $("testnotify").addEventListener("click", async () => {
 let watchTimer = null;
 $("watchwords").addEventListener("input", () => {
   clearTimeout(watchTimer);
-  watchTimer = setTimeout(saveSettings, 450);
+  // Reload after saving so the gold glow follows the words as you type them,
+  // rather than waiting for the next poll to pick them up.
+  watchTimer = setTimeout(() => saveSettings().then(load), 450);
 });
 
 let kwTimer = null;

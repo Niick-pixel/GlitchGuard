@@ -23,6 +23,8 @@
       <strong id="nextrun">—</strong>
       <span id="laststate">starting up</span>
     </div>
+    <button id="updatepill" class="updatepill hidden" type="button"
+            title="A verified update is ready to install">Update ready &middot; Restart</button>
     <button id="refresh" class="btn">Refresh now</button>
   </div>
 </header>
@@ -222,9 +224,21 @@
 
     <label class="toggle setinline" style="margin-top:14px">
       <input type="checkbox" id="checkupdates">
-      <span>Check for updates on launch</span>
+      <span>Check for updates</span>
+    </label>
+    <label class="toggle setinline" id="autoupdaterow">
+      <input type="checkbox" id="autoupdate">
+      <span>Install updates automatically</span>
     </label>
     <p class="sethint" id="versionline" style="margin-top:4px">Version -</p>
+    <div class="setrow" style="margin:8px 0 0">
+      <button class="btn" id="checknow" type="button">Check now</button>
+      <button class="btn primary hidden" id="updaterestart" type="button">Restart to update</button>
+    </div>
+    <p class="sethint" style="margin-top:8px">
+      Updates are only installed if they carry a valid GlitchGuard signature,
+      and never touch your settings or deal history.
+    </p>
   </div>
 
   <div class="setcard">

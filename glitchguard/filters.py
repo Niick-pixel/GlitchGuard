@@ -257,17 +257,39 @@ def find_promo_code(*texts):
     return ""
 
 
+_WATCH_PATTERNS = {}
+
+
+def _watch_pattern(word):
+    """Whole-word match for a watch keyword, plurals allowed.
+
+    This used to be a plain substring test, so "apple" matched "Pineapple"
+    and "Snapple" and rang a keyword alert for a hair product. Letters or
+    digits on either side now mean it is part of a longer word. Lookarounds
+    rather than \\b, so keywords containing symbols - "s26+", "c++" - still
+    anchor correctly.
+    """
+    pattern = _WATCH_PATTERNS.get(word)
+    if pattern is None:
+        pattern = re.compile(
+            rf"(?<![a-z0-9]){re.escape(word)}(?:s|es)?(?![a-z0-9])")
+        _WATCH_PATTERNS[word] = pattern
+    return pattern
+
+
 def watch_match(deal, keywords):
     """Return the first watch keyword this deal matches, or ''.
 
     Matched against the title and retailer, the same surface the exclude list
-    uses, so the two behave predictably against each other.
+    uses, so the two behave predictably against each other. The exclude list
+    stays a substring match on purpose: it is labelled "Hide titles
+    containing", and hiding too much is the safer failure there.
     """
     if not keywords:
         return ""
     haystack = f"{deal.get('title') or ''} {deal.get('retailer') or ''}".lower()
     for word in keywords:
-        if word and word in haystack:
+        if word and _watch_pattern(word).search(haystack):
             return word
     return ""
 

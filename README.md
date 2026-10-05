@@ -223,6 +223,18 @@ A word you typed yourself is the strongest signal in the app, so a watch hit
 outranks the score threshold: it fires even for a deal scoring well below
 **Notify at score**, and it claims that deal so one find never makes two sounds.
 
+Matching is by **whole word**, plurals included: `macbook` matches "MacBook Air"
+and "MacBooks", but `apple` no longer matches "Pineapple" or "Snapple". It used
+to be a plain substring test, which rang a keyword alert for a pineapple-scented
+hair product. (The hide list stays a substring match on purpose - it is labelled
+*Hide titles containing*, and hiding too much is the safer mistake there.)
+
+**Watched deals glow gold.** Any deal matching a watch keyword, and any pinned
+product, gets a gold border and a slowly breathing gold halo **instead of** the
+rainbow glow, however big its discount: something you asked for by name
+matters more than a big number, and two kinds of glow on one card would say
+nothing. The gold follows your watch words as you type them.
+
 Hidden product types still win. Watching `airpods` will not resurface something
 excluded by category or by the hide list — the same `filters.suppressed` gate
 applies first.
@@ -752,12 +764,60 @@ Cells that start with `=`, `+`, `-` or `@` are prefixed with an apostrophe.
 Product titles come from public feeds, and a cell starting that way would be run
 by Excel as a formula.
 
-## Updates
+## Automatic updates
 
-On launch, one anonymous request to GitHub's public API checks whether a newer
-release exists; the result shows under Settings -> App as a link. Nothing is
-downloaded or installed automatically. Turn it off with **Check for updates on
-launch**.
+The desktop app updates itself. Every six hours it asks GitHub's public API
+whether a newer release exists - one anonymous request, nothing about you or
+your deals is sent - and if so it downloads it in the background, verifies it,
+and installs it the next time the app starts. An **Update ready · Restart** pill
+in the top bar, a Windows notification, and a button under Settings -> App all
+install it immediately instead. Your `data\` folder - settings, deal history,
+tokens - is never touched.
+
+**Why every release is signed.** An updater installs code with no one checking
+it, so the thing to defend against is a release that is not yours - a
+compromised GitHub account, say. A checksum published in the same release would
+not help: whoever can upload the zip can upload the checksum too. Instead each
+release carries an Ed25519 signature made with a key that exists only on the
+developer's PC, and the app has the matching public key built in. It refuses
+anything that does not verify, wherever it came from.
+
+The signature covers the version and file name as well as the SHA-256 and size,
+so a genuinely signed *old* release cannot be replayed as a newer version to
+downgrade an install. Then:
+
+- the zip must match the signed size and hash, byte for byte;
+- it must unpack to a single `GlitchGuard\` folder - no absolute paths, no `..`;
+- the swap is done by a small installer script after the app closes. It moves
+  the old `GlitchGuard.exe` and `_internal\` aside, moves the new ones in, and
+  **puts the old ones back if anything fails**, then relaunches;
+- an install that failed is not retried on its own every six hours - **Check
+  now** tries again - and the reason is in `data\updates\install.log`.
+
+All of that was tested against real packaged builds: a normal update, an update
+installed at the next launch, a download with one byte flipped (refused by the
+hash), and an install deliberately broken halfway through, after the new
+`_internal` was already in place (rolled back; the old version started intact).
+
+Switch it off under Settings -> App: **Install updates automatically** keeps the
+check but only shows a link, and **Check for updates** stops checking at all.
+The browser version never installs anything; it only shows the link.
+
+### Publishing a release
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\build.ps1
+powershell -ExecutionPolicy Bypass -File tools\release.ps1 -Notes notes.md
+```
+
+`build.ps1` signs the zip if the signing key is present, and `release.ps1`
+refuses to publish a zip whose signature is missing or does not verify -
+otherwise it would look fine on GitHub but no installed copy would accept it.
+
+The key is `%USERPROFILE%\.glitchguard-signing\release-key.pem`, created once
+with `python tools\sign.py init`, outside both the repo and OneDrive. **Back it
+up somewhere private.** If it is ever lost, installed copies will rightly refuse
+updates signed with a new key, so one release would have to be installed by hand.
 
 ## The price-error score
 

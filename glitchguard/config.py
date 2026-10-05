@@ -104,6 +104,9 @@ DEFAULTS = {
     "native_toasts": True,
     # One anonymous request to GitHub per launch to see if a release is newer.
     "check_updates": True,
+    # Packaged app only: download, verify and install updates by itself.
+    # Releases must carry a valid signature from the GlitchGuard release key.
+    "auto_update": True,
     # Maximum age of a listed deal, measured from when it was posted - the same
     # figure shown on the card, so the two can never disagree.
     "deal_ttl_hours": 12,

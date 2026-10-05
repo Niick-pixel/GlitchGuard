@@ -301,7 +301,7 @@ class Shell:
             traceback.print_exc()
             self.toaster = None
 
-    def _toast(self, headline, body, url):
+    def _toast(self, headline, body, url=None, action=None):
         if not self.toaster:
             return
         try:
@@ -313,7 +313,9 @@ class Shell:
                 f"toast failed: {getattr(args, 'reason', args)!r}")
             toast.on_dismissed = lambda args: print(
                 f"toast shown, then {getattr(args, 'reason', args)!r}")
-            if url:
+            if action:
+                toast.on_activated = lambda _args: action()
+            elif url:
                 safe = url if url.startswith(("http://", "https://")) else None
                 if safe:
                     toast.on_activated = lambda _args: webbrowser.open(safe)
@@ -356,6 +358,47 @@ class Shell:
                     "https://github.com/Niick-pixel/price-error-hunter")
         return {"ok": True, "note": "Sent - check the corner of your screen"}
 
+    # -- updates -----------------------------------------------------------
+    UPDATE_EVERY = 6 * 3600
+
+    def apply_update(self):
+        """Hand off to the installer and exit; it relaunches the new version."""
+        if updates.apply(tray=self.hidden):
+            print(f"Installing update {updates.status().get('ready')}; exiting.")
+            self.quit()
+            return {"ok": True}
+        return {"ok": False, "note": updates.status().get("error") or "No update is ready"}
+
+    def check_updates_now(self):
+        """The Check now button: also retries a version that failed before."""
+        cfg = config.load()
+        threading.Thread(
+            target=updates.check_and_stage,
+            kwargs={"auto": bool(cfg.get("auto_update", True)), "manual": True},
+            daemon=True).start()
+        return {"ok": True}
+
+    def _update_loop(self):
+        # Let the first poll cycle run before competing with it for bandwidth.
+        self._sleep(45)
+        while not self.quitting:
+            cfg = config.load()
+            if cfg.get("check_updates", True):
+                state = updates.check_and_stage(auto=bool(cfg.get("auto_update", True)))
+                ready = state.get("ready")
+                if state.get("state") == "ready" and ready != getattr(self, "_announced", None):
+                    self._announced = ready
+                    self._toast("Update ready",
+                                f"GlitchGuard {ready} is ready. Click to restart and "
+                                f"install it now, or it installs next time you open the app.",
+                                action=self.apply_update)
+            self._sleep(self.UPDATE_EVERY)
+
+    def _sleep(self, seconds):
+        end = time.time() + seconds
+        while not self.quitting and time.time() < end:
+            time.sleep(min(5, end - time.time()))
+
     def on_settings(self, cfg):
         set_autostart(bool(cfg.get("autostart", True)))
 
@@ -373,7 +416,8 @@ class Shell:
                 port = candidate
                 break
             except OSError as exc:
-                if exc.errno not in (errno.EADDRINUSE, 10048):
+                # 10013 is what Windows reports when the port is held exclusively.
+                if exc.errno not in (errno.EADDRINUSE, errno.EACCES, 10048, 10013):
                     raise
         if httpd is None:
             print("Could not bind a local port in 8765-8785.")
@@ -389,8 +433,7 @@ class Shell:
         with open(INSTANCE_FILE, "w", encoding="utf-8") as fh:
             json.dump({"port": port, "token": server.TOKEN, "pid": os.getpid()}, fh)
 
-        if cfg.get("check_updates", True):
-            updates.check_async()
+        threading.Thread(target=self._update_loop, daemon=True).start()
         set_autostart(bool(cfg.get("autostart", True)))
         self._start_toasts()
         self._start_tray()
@@ -438,6 +481,16 @@ def main():
     if cleared:
         print(f"Unblocked {cleared} bundled DLLs marked as downloaded.")
     _set_app_id()
+    updates.startup()
+    # A verified update waiting from last time installs now, before the poller
+    # or the window start - unless the last hand-off never ran, in which case
+    # retrying at every launch would stop the app opening at all.
+    if updates.pending():
+        if updates.handoff_failed():
+            print("A previous update hand-off never ran; starting normally.")
+        elif updates.apply(tray=start_hidden):
+            print("Installing the staged update; exiting.")
+            return 0
     try:
         return Shell(start_hidden).run()
     except Exception as exc:
@@ -446,5 +499,20 @@ def main():
         return 1
 
 
+def run_app():
+    code = main()
+    if config.FROZEN:
+        try:
+            sys.stdout.flush()
+        except Exception:
+            pass
+        # Every cleanup ran in run()'s finally block. A stray non-daemon
+        # thread - WinRT's, say - must not keep the process alive, because the
+        # update installer waits for this process to exit before it can swap
+        # the files.
+        os._exit(code or 0)
+    return code
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_app())

@@ -2,6 +2,7 @@ import json
 import mimetypes
 import os
 import secrets
+import socket
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -131,6 +132,17 @@ class Handler(BaseHTTPRequestHandler):
                     traceback.print_exc()
             self._json(cfg)
             return
+        if parsed.path == "/api/update/apply":
+            self._json(self.desktop.apply_update() if self.desktop
+                       else {"ok": False, "note": "Only the desktop app installs updates"})
+            return
+        if parsed.path == "/api/update/check":
+            if self.desktop:
+                self._json(self.desktop.check_updates_now())
+            else:
+                updates.check_async()
+                self._json({"ok": True})
+            return
         if parsed.path == "/api/toast/test":
             self._json(self.desktop.test_toast() if self.desktop
                        else {"ok": False, "note": "Only in the desktop app"})
@@ -183,6 +195,15 @@ class Handler(BaseHTTPRequestHandler):
             exclude_keywords=keywords,
             max_age_hours=cfg.get("deal_ttl_hours"),
         )
+        # Mark what you are watching for, using the same matchers the alert
+        # path uses, so a gold card can never disagree with what would ring.
+        words = filters.parse_keywords(cfg.get("watch_keywords"))
+        pinned = filters.parse_watchlist(cfg.get("watchlist"))
+        for d in everything:
+            if filters.watchlist_match(d, pinned):
+                d["watched"] = "pinned"
+            else:
+                d["watched"] = filters.watch_match(d, words)
         counts = {
             name: sum(1 for d in everything if store.in_section(d, name))
             for name in store.SECTIONS
@@ -254,6 +275,9 @@ class Handler(BaseHTTPRequestHandler):
         cfg = config.load()
         status["settings"] = cfg
         status["desktop"] = self.desktop.info() if self.desktop else None
+        # Small and in-memory; riding on the status poll means the page can
+        # show download progress without a request of its own.
+        status["update"] = updates.status()
         status["amazon_budget"] = self.poller.checker.budget(cfg)
         # status() deliberately reports only whether keys exist, never the keys.
         status["paapi"] = creators.status()
@@ -309,7 +333,28 @@ def _csv_cell(value):
     return text
 
 
+class _ExclusiveServer(ThreadingHTTPServer):
+    """Claims its port exclusively.
+
+    HTTPServer sets SO_REUSEADDR, and on Windows that flag does not mean what
+    it means elsewhere: it lets a second program bind a port that is already
+    in use and take its connections over. Starting the browser version while
+    the desktop app was running did exactly that - the app's own window was
+    suddenly talking to the other server, with the wrong token, and showed
+    "lost contact". SO_EXCLUSIVEADDRUSE makes the second bind fail cleanly,
+    so serve()'s caller moves on to the next free port as intended.
+    """
+
+    allow_reuse_address = False
+
+    def server_bind(self):
+        exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
+        if exclusive is not None:
+            self.socket.setsockopt(socket.SOL_SOCKET, exclusive, 1)
+        super().server_bind()
+
+
 def serve(poller, port):
     Handler.poller = poller
-    httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    httpd = _ExclusiveServer(("127.0.0.1", port), Handler)
     return httpd
