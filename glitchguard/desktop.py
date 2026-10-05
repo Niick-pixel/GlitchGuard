@@ -355,7 +355,7 @@ class Shell:
             return {"ok": False, "note": "Windows notifications are unavailable"}
         self._toast("Possible price error \u00b7 92/100",
                     "GlitchGuard test notification\nClick to open the project page",
-                    "https://github.com/Niick-pixel/price-error-hunter")
+                    "https://github.com/Niick-pixel/GlitchGuard")
         return {"ok": True, "note": "Sent - check the corner of your screen"}
 
     # -- updates -----------------------------------------------------------

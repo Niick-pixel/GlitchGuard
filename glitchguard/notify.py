@@ -158,7 +158,7 @@ def send_test(cfg):
         "title": "GlitchGuard test message",
         "price": 9.99, "list_price": 99.99, "discount_pct": 90,
         "retailer": "Test", "score": 95,
-        "url": "https://github.com/Niick-pixel/price-error-hunter",
+        "url": "https://github.com/Niick-pixel/GlitchGuard",
     }
     dest = configured(cfg)
     if not any(dest.values()):

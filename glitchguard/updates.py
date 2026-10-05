@@ -38,7 +38,10 @@ import zipfile
 
 from . import __version__, config
 
-REPO = "Niick-pixel/price-error-hunter"
+# The repository was renamed from price-error-hunter. Copies at 1.0.2 still
+# ask for the old name and reach this one through GitHub's redirect, which
+# holds only while no new repository takes the old name on this account.
+REPO = "Niick-pixel/GlitchGuard"
 LATEST = f"https://api.github.com/repos/{REPO}/releases/latest"
 # Lets the update flow be exercised against a local server. It cannot be used
 # to install anything unsigned: every package is still verified against the

@@ -21,6 +21,6 @@ if (-not (Test-Path "$zip.sig")) { throw "$zip is not signed - installed copies 
 & $py (Join-Path $root "tools\sign.py") verify $zip
 if ($LASTEXITCODE -ne 0) { throw "The signature does not verify - not publishing" }
 
-& $gh release create "v$version" $zip "$zip.sig" --repo Niick-pixel/price-error-hunter `
+& $gh release create "v$version" $zip "$zip.sig" --repo Niick-pixel/GlitchGuard `
     --target main --title "GlitchGuard $version" --notes-file $Notes --latest
 if ($LASTEXITCODE -ne 0) { throw "gh release create failed" }
