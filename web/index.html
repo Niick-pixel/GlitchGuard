@@ -10,122 +10,99 @@
 
 <header class="topbar">
   <div class="brand">
-    <span class="logo">◆</span>
-    <div>
-      <h1>GlitchGuard</h1>
-      <p class="sub" id="feedline">Catch real pricing mistakes before they vanish.</p>
-    </div>
+    <span class="logo">&#9670;</span>
+    <span class="brandname">GlitchGuard</span>
+    <p class="sub hidden" id="feedline"></p>
   </div>
 
+  <nav class="tabs" aria-label="Sections">
+    <button class="tab active" data-view="feed">
+      <span class="tabname">Deals</span>
+      <span class="tabcount" id="count-feed">&mdash;</span>
+    </button>
+    <button class="tab" data-view="amazon">
+      <span class="tabname">Amazon</span>
+      <span class="tabcount" id="count-amazon">&mdash;</span>
+    </button>
+    <button class="tab" data-view="woot">
+      <span class="tabname">Woot</span>
+      <span class="tabcount" id="count-woot">&mdash;</span>
+    </button>
+    <button class="tab" data-view="walmart">
+      <span class="tabname">Walmart</span>
+      <span class="tabcount" id="count-walmart">&mdash;</span>
+    </button>
+    <button class="tab" data-view="alerts">
+      <span class="tabname">Alerts</span>
+      <span class="tabcount" id="count-alerts">&mdash;</span>
+    </button>
+  </nav>
+
   <div class="status" id="status">
-    <div class="pulse" id="pulse"></div>
-    <div class="statustext">
-      <strong id="nextrun">—</strong>
-      <span id="laststate">starting up</span>
-    </div>
     <button id="updatepill" class="updatepill hidden" type="button"
             title="A verified update is ready to install">Update ready &middot; Restart</button>
-    <button id="refresh" class="btn">Refresh now</button>
+    <div class="statuspill" title="Feed status">
+      <div class="pulse" id="pulse"></div>
+      <span class="statustext"><strong id="nextrun">&mdash;</strong> <span id="laststate">starting up</span></span>
+    </div>
+    <button id="refresh" class="btn ghost" title="Check the feeds now">Refresh</button>
   </div>
 </header>
 
-<nav class="tabs">
-  <button class="tab active" data-view="feed">
-    <span class="tabname">Deals Feed</span>
-    <span class="tabcount" id="count-feed">—</span>
-  </button>
-  <button class="tab" data-view="amazon">
-    <span class="tabname">Amazon</span>
-    <span class="tabcount" id="count-amazon">—</span>
-  </button>
-  <button class="tab" data-view="woot">
-    <span class="tabname">Woot</span>
-    <span class="tabcount" id="count-woot">—</span>
-  </button>
-  <button class="tab" data-view="walmart">
-    <span class="tabname">Walmart</span>
-    <span class="tabcount" id="count-walmart">—</span>
-  </button>
-  <button class="tab" data-view="alerts">
-    <span class="tabname">Alerts</span>
-    <span class="tabcount" id="count-alerts">—</span>
-  </button>
-  <button class="tab tabsettings" data-view="settings">
-    <span class="tabname">Settings</span>
-  </button>
-</nav>
+<main class="page">
 
-<section class="controls">
-  <div class="filters">
-    <label class="field">
-      <span>Min discount</span>
+<section class="pagehead">
+  <div class="pagetitlewrap">
+    <h2 id="pagetitle">Deals</h2>
+    <div class="counts" id="counts"></div>
+  </div>
+
+  <div class="controls">
+    <label class="searchbox" title="Searches every stored deal, including expired ones">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+        <path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <input type="search" id="search" placeholder="Search all deals" autocomplete="off" spellcheck="false">
+      <button type="button" id="searchclear" class="searchclear" aria-label="Clear search">&times;</button>
+    </label>
+    <label class="chip field">
+      <span>Min</span>
       <select id="mindiscount">
-        <option value="0">Any</option>
+        <option value="0">Any discount</option>
         <option value="40">40%+</option>
         <option value="60">60%+</option>
         <option value="75">75%+</option>
         <option value="90">90%+</option>
       </select>
     </label>
-    <label class="field">
-      <span>Sort by</span>
+    <label class="chip field">
+      <span>Sort</span>
       <select id="sort">
         <option value="score">Price-error score</option>
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
-        <option value="discount">Discount: high → low</option>
-        <option value="discount_asc">Discount: low → high</option>
+        <option value="discount">Discount: high &rarr; low</option>
+        <option value="discount_asc">Discount: low &rarr; high</option>
         <option value="savings">Largest saving</option>
       </select>
     </label>
-    <label class="field">
-      <span>Check every</span>
-      <select id="interval">
-        <option value="120">2 min</option>
-        <option value="180">3 min</option>
-        <option value="300">5 min</option>
-        <option value="600">10 min</option>
-        <option value="1800">30 min</option>
-      </select>
-    </label>
-    <label class="field">
-      <span title="Plays a chime only — no notification card">Chime at</span>
-      <select id="sounddiscount">
-        <option value="0">Off</option>
-        <option value="50">50%+ off</option>
-        <option value="60">60%+ off</option>
-        <option value="70">70%+ off</option>
-        <option value="80">80%+ off</option>
-        <option value="90">90%+ off</option>
-      </select>
-    </label>
-
-    <!-- Checkboxes last, after every dropdown. -->
-    <label class="toggle">
-      <input type="checkbox" id="sound">
-      <span>Sound alert</span>
-    </label>
-    <label class="toggle">
-      <input type="checkbox" id="screenglow">
-      <span title="Edge glow around the screen when something lands">Screen glow</span>
-    </label>
-    <label class="toggle amazonopt hidden">
+    <label class="chip toggle amazonopt hidden">
       <input type="checkbox" id="livecheck">
       <span>Live Amazon check</span>
     </label>
+    <button id="exportcsv" class="chip" type="button" title="Save this tab as a spreadsheet">Export</button>
+    <button id="clearalerts" class="chip alertsopt hidden" type="button">Clear history</button>
   </div>
-  <div class="counts" id="counts"></div>
-  <button id="exportcsv" class="btn" type="button" title="Save this tab as a spreadsheet">Export CSV</button>
-  <button id="clearalerts" class="btn alertsopt hidden" type="button">Clear history</button>
 </section>
 
 <p id="amazonnote" class="note hidden"></p>
 
-<div id="alert" class="alert hidden"></div>
+<div id="alert" class="notistack hidden" aria-live="polite"></div>
 
 <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modaltitle">
   <div class="modalcard" id="modalcard">
-    <button class="modalclose" id="modalclose" aria-label="Close">×</button>
+    <button class="modalclose" id="modalclose" aria-label="Close">&times;</button>
     <div id="modalbody"></div>
   </div>
 </div>
@@ -272,6 +249,29 @@
       </select>
     </div>
 
+    <div class="setrow">
+      <label class="setlabel" for="sounddiscount">
+        Chime at <span class="setnote">a sound only, no notification, for any new deal at or above this discount</span>
+      </label>
+      <select id="sounddiscount">
+        <option value="0">Off</option>
+        <option value="50">50%+ off</option>
+        <option value="60">60%+ off</option>
+        <option value="70">70%+ off</option>
+        <option value="80">80%+ off</option>
+        <option value="90">90%+ off</option>
+      </select>
+    </div>
+
+    <label class="toggle setinline">
+      <input type="checkbox" id="sound">
+      <span>Sound alerts</span>
+    </label>
+    <label class="toggle setinline">
+      <input type="checkbox" id="screenglow">
+      <span>Screen glow when something lands</span>
+    </label>
+
     <p class="sethint">
       Hidden product types never raise an alert, whatever they score.
     </p>
@@ -384,6 +384,18 @@
 
   <div class="setcard">
     <h3>Deal sources</h3>
+    <div class="setrow">
+      <label class="setlabel" for="interval">
+        Check every <span class="setnote">a little jitter is added so requests never form a pattern</span>
+      </label>
+      <select id="interval">
+        <option value="120">2 minutes</option>
+        <option value="180">3 minutes</option>
+        <option value="300">5 minutes</option>
+        <option value="600">10 minutes</option>
+        <option value="1800">30 minutes</option>
+      </select>
+    </div>
     <div id="sourcelist" class="catlist"></div>
     <p class="sethint">Turning one off stops polling it on the next cycle.</p>
   </div>
@@ -405,8 +417,27 @@
 
 </section>
 
-<main id="grid" class="grid"></main>
-<p id="empty" class="empty">Loading the deal feed…</p>
+<div id="grid" class="grid"></div>
+<p id="empty" class="empty">Loading the deal feed&hellip;</p>
+
+</main>
+
+<div class="fabs">
+  <button id="themetoggle" class="fab" type="button" title="Light / dark" aria-label="Switch light and dark">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+  </button>
+  <button id="settingsfab" class="fab" type="button" title="Settings" aria-label="Settings">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
+      <path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="16" cy="7" r="2.2" stroke="currentColor" stroke-width="1.8"/>
+      <circle cx="10" cy="17" r="2.2" stroke="currentColor" stroke-width="1.8"/>
+    </svg>
+  </button>
+</div>
 
 <script src="/static/siri-glow.js"></script>
 <script src="/static/app.js"></script>

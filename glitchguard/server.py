@@ -93,6 +93,12 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/status":
                 self._json(self._status())
                 return
+            if path == "/api/search":
+                q = (query.get("q", [""])[0] or "").strip()[:120]
+                found = store.search_deals(q)
+                _mark_watched(found, config.load())
+                self._json({"q": q, "deals": found})
+                return
             if path == "/api/version":
                 self._json(updates.status())
                 return
@@ -195,20 +201,20 @@ class Handler(BaseHTTPRequestHandler):
             exclude_keywords=keywords,
             max_age_hours=cfg.get("deal_ttl_hours"),
         )
-        # Mark what you are watching for, using the same matchers the alert
-        # path uses, so a gold card can never disagree with what would ring.
-        words = filters.parse_keywords(cfg.get("watch_keywords"))
-        pinned = filters.parse_watchlist(cfg.get("watchlist"))
-        for d in everything:
-            if filters.watchlist_match(d, pinned):
-                d["watched"] = "pinned"
-            else:
-                d["watched"] = filters.watch_match(d, words)
+        # The Alerts tab has its own query. It used to be cut out of the feed
+        # query above, which applies the age limit and skips expired deals,
+        # so most alerted deals silently vanished from the one tab that
+        # promises to keep them.
+        alerts = store.list_deals(section="alerts", min_discount=min_discount,
+                                  sort=sort)
+        _mark_watched(everything + alerts, cfg)
         counts = {
             name: sum(1 for d in everything if store.in_section(d, name))
-            for name in store.SECTIONS
+            for name in store.SECTIONS if name != "alerts"
         }
-        deals = [d for d in everything if store.in_section(d, section)]
+        counts["alerts"] = len(alerts)
+        deals = alerts if section == "alerts" else [
+            d for d in everything if store.in_section(d, section)]
         self._json({
             "deals": deals,
             "counts": counts,
@@ -282,6 +288,18 @@ class Handler(BaseHTTPRequestHandler):
         # status() deliberately reports only whether keys exist, never the keys.
         status["paapi"] = creators.status()
         return status
+
+
+def _mark_watched(deals, cfg):
+    """Flag deals you are watching for, with the same matchers the alert path
+    uses, so a gold card can never disagree with what would ring."""
+    words = filters.parse_keywords(cfg.get("watch_keywords"))
+    pinned = filters.parse_watchlist(cfg.get("watchlist"))
+    for d in deals:
+        if filters.watchlist_match(d, pinned):
+            d["watched"] = "pinned"
+        else:
+            d["watched"] = filters.watch_match(d, words)
 
 
 EXPORT_COLUMNS = (

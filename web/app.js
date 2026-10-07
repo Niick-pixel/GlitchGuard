@@ -41,6 +41,11 @@ let GLOW_DISCOUNT = 50;
    accents no matter how the accents were tuned - a cool background makes a
    warm accent look like an error rather than a choice. */
 const BG_THEMES = {
+  // Soft sage with a forest-green accent: the calm, low-contrast look of the
+  // reference design. The default for new installs.
+  sage:     { label: "Sage",     mode: "light", bg: "#e6e8dc", raised: "#f2f3ec" },
+  // Its dark counterpart, so the light/dark toggle stays in the same family.
+  moss:     { label: "Moss",     mode: "dark",  bg: "#1c1f1a", raised: "#262a23" },
   espresso: { label: "Espresso", mode: "dark",  bg: "#211d18", raised: "#2c2720" },
   walnut:   { label: "Walnut",   mode: "dark",  bg: "#26201a", raised: "#332b22" },
   umber:    { label: "Umber",    mode: "dark",  bg: "#1b1713", raised: "#25201a" },
@@ -52,8 +57,10 @@ const BG_THEMES = {
 };
 
 function applyTheme(name) {
-  const t = BG_THEMES[name] || BG_THEMES.espresso;
+  const t = BG_THEMES[name] || BG_THEMES.sage;
   const root = document.documentElement;
+  // Themes can carry their own accent family (see html[data-theme] in CSS).
+  root.dataset.theme = name in BG_THEMES ? name : "sage";
   root.style.setProperty("--bg", t.bg);
   root.style.setProperty("--bg-raised", t.raised);
   root.dataset.mode = t.mode;
@@ -257,6 +264,10 @@ function buildCard(deal) {
   const card = el("article", "card");
   card.dataset.id = deal.id;
   // Anything at or above this discount gets the aurora backlight.
+  if (deal.gone) {
+    card.classList.add("expired");
+    card.title = "Expired: past your age limit or no longer listed by its feed";
+  }
   // Something you asked for by name outranks a big discount: it gets the
   // gold glow instead of the rainbow, so it is the first thing you see.
   if (deal.watched) {
@@ -714,7 +725,7 @@ function cardSignature(d) {
   return [
     d.title, d.price, d.list_price, d.discount_pct, d.savings,
     d.score, d.tier, d.is_new, d.image, d.retailer, d.source, d.promo_code,
-    d.watched,
+    d.watched, d.gone,
   ].join("");
 }
 
@@ -731,7 +742,7 @@ function patchAge(card, deal) {
   if (!deal.is_new && flag) flag.remove();
 }
 
-function render(deals) {
+function render(deals, summary = "") {
   window.__deals = deals;
   const grid = $("grid");
   const animate = revealer && !document.hidden;
@@ -770,10 +781,15 @@ function render(deals) {
   $("empty").classList.toggle("hidden", deals.length > 0);
   if (!deals.length) renderEmpty();
 
-  const errors = deals.filter((d) => d.tier === "error").length;
-  const fresh = deals.filter((d) => d.is_new).length;
   const counts = $("counts");
   counts.replaceChildren();
+  if (summary) {
+    const expired = deals.filter((d) => d.gone).length;
+    counts.append(el("span", null, summary + (expired ? ` \u00b7 ${expired} expired` : "")));
+    return;
+  }
+  const errors = deals.filter((d) => d.tier === "error").length;
+  const fresh = deals.filter((d) => d.is_new).length;
   counts.append(el("span", null, `${deals.length} deals · `));
   const b = el("b", null, `${errors} likely price errors`);
   counts.append(b);
@@ -880,171 +896,189 @@ function ageWords(minutes) {
   return `posted ${Math.floor(hours / 24)} d ago`;
 }
 
-/* Pending notifications, newest last. They accumulate while you are looking at
-   something else and collapse into one stacked card, because six toasts in a
-   row is six things to dismiss and no way to see what you missed.
+/* Notifications: one card per alert, stacked newest-first in the corner.
+   Each is its own thing - open it, find it in the app, or dismiss it - and
+   Clear all empties the stack. They stay until you act on them, survive a
+   reload, and are not cleared by visiting a tab.
 
-   Cleared on dismiss, and on arriving at the Alerts tab - once the list is on
-   screen the toast has nothing left to tell you. */
-let alertQueue = [];
-let alertExpanded = false;
+   The score alert is re-sent with every status poll, so a dismissed card
+   would come straight back. Every id that has ever been shown is remembered
+   (and persisted), and only a genuinely new one is added. */
+const NOTI_KEY = "gg.notifications.v1";
+const NOTI_SEEN_KEY = "gg.notifications.seen.v1";
+const NOTI_VISIBLE = 4;
+let notis = [];
+let notiSeen = new Set();
+let notiExpanded = false;
 
-function queueAlert(payload, keyword) {
-  if (!payload || !payload.id) return;
-  const entry = { ...payload, keyword: keyword || null };
-  const at = alertQueue.findIndex((a) => a.id === entry.id);
-  if (at >= 0) alertQueue.splice(at, 1);      // re-alerted: move to the front
-  alertQueue.push(entry);
-  // A runaway feed must not build an unbounded list in memory.
-  if (alertQueue.length > 40) alertQueue = alertQueue.slice(-40);
+function loadNotis() {
+  try {
+    notis = JSON.parse(localStorage.getItem(NOTI_KEY) || "[]");
+    notiSeen = new Set(JSON.parse(localStorage.getItem(NOTI_SEEN_KEY) || "[]"));
+  } catch {
+    notis = [];
+    notiSeen = new Set();
+  }
 }
 
-function alertReasonWords(entry) {
-  if (entry.keyword === "pinned") return "Pinned";
-  if (entry.keyword) return `“${entry.keyword}”`;
-  return "Price error";
+function saveNotis() {
+  try {
+    localStorage.setItem(NOTI_KEY, JSON.stringify(notis.slice(0, 40)));
+    // Bounded: only recent ids matter, and the set must not grow forever.
+    localStorage.setItem(NOTI_SEEN_KEY, JSON.stringify([...notiSeen].slice(-400)));
+  } catch {}
+}
+
+function queueAlert(payload, keyword) {
+  if (!payload || !payload.id || notiSeen.has(payload.id)) return false;
+  notiSeen.add(payload.id);
+  notis.unshift({ ...payload, keyword: keyword || null, at: Date.now() });
+  notis = notis.slice(0, 40);
+  saveNotis();
+  return true;
 }
 
 function renderAlert(top, keyword) {
-  const alert = $("alert");
-  if (!top) {
-    // Only an empty queue hides the card: a stack outlives the status payload
-    // that last mentioned any one of its members.
-    if (!alertQueue.length) {
-      alert.classList.add("hidden");
-      lastAlertId = null;
-    }
-    return;
-  }
-
+  if (!top) return;
   // A watch hit has already made its own sound and glow; do not repeat them.
   if (!keyword && top.id !== lastAlertId) {
     lastAlertId = top.id;
-    if (settings.sound_alerts && !toastCovers()) chime();
-    notifyDesktop(top);
-    // Brightness tracks how strong the find is.
-    glowPulse(0.32 + 0.26 * Math.min(1, (top.score || 0) / 100), 5000);
+    if (!notiSeen.has(top.id)) {
+      if (settings.sound_alerts && !toastCovers()) chime();
+      notifyDesktop(top);
+      // Brightness tracks how strong the find is.
+      glowPulse(0.32 + 0.26 * Math.min(1, (top.score || 0) / 100), 5000);
+    }
   }
   if (keyword) lastAlertId = top.id;
-
-  queueAlert(top, keyword);
-  // Standing in front of the list already: nothing to pop up about.
-  if (view === "alerts") {
-    alertQueue = [];
-    alert.classList.add("hidden");
-    return;
-  }
-  drawAlertCard();
+  if (queueAlert(top, keyword)) drawNotis();
 }
 
-/* Draws whatever is currently queued: the newest on top, with the rest either
-   hinted at as a stack or listed in full once expanded. */
-function drawAlertCard() {
-  const alert = $("alert");
-  if (!alertQueue.length) {
-    alert.classList.add("hidden");
-    return;
-  }
-  const top = alertQueue[alertQueue.length - 1];
-  const keyword = top.keyword === "pinned" ? null : top.keyword;
-  const extra = alertQueue.length - 1;
+function notiKicker(n) {
+  if (n.keyword === "pinned") return "Pinned product";
+  if (n.keyword) return `Watching \u201c${n.keyword}\u201d`;
+  return `Possible price error \u00b7 ${Math.round(n.score || 0)}/100`;
+}
 
-  alert.classList.remove("hidden");
-  alert.classList.toggle("stacked", extra > 0 && !alertExpanded);
-  alert.replaceChildren();
+function buildNoti(n) {
+  const card = el("div", "noti" + (n.keyword ? " watch" : ""));
+  card.setAttribute("role", "button");
+  card.tabIndex = 0;
 
-  if (top.image) {
+  if (n.image) {
     const img = new Image();
-    img.className = "alertthumb";
-    img.src = top.image;
+    img.className = "notithumb";
+    img.src = n.image;
     img.alt = "";
     img.onerror = () => img.remove();
-    alert.append(img);
+    card.append(img);
   }
 
-  const body = el("div", "alertbody");
-  const kicker = keyword
-    ? `Watching “${keyword}”`
-    : `Possible price error · ${Math.round(top.score)}/100`;
-  const kickerEl = el("span", "alertkicker", kicker);
-  if (keyword) kickerEl.classList.add("watch");
-  if (extra > 0) kickerEl.append(el("span", "alertcount", `+${extra}`));
-  body.append(kickerEl);
-  body.append(el("span", "alerttitle", top.title));
+  const body = el("div", "notibody");
+  body.append(el("span", "notikicker", notiKicker(n)));
+  body.append(el("span", "notititle", n.title || "Untitled"));
   const bits = [];
-  if (top.retailer) bits.push(top.retailer);
-  if (typeof top.price === "number") bits.push(money(top.price));
-  if (top.discount_pct) bits.push(`${Math.round(top.discount_pct)}% off`);
-  bits.push("Click to open →");
-  body.append(el("div", "alertmeta", bits.join(" · ")));
+  if (n.retailer) bits.push(n.retailer);
+  if (typeof n.price === "number") bits.push(money(n.price));
+  if (n.discount_pct) bits.push(`${Math.round(n.discount_pct)}% off`);
+  if (bits.length) body.append(el("span", "notimeta", bits.join(" \u00b7 ")));
 
-  // Provenance on its own line. Most of the delay between a deal going up and
-  // this card appearing belongs to the feed that carried it, so naming the
-  // feed and the age makes a "late" alert legible rather than mysterious.
+  // Provenance: most of an alert's lateness belongs to the feed that carried
+  // it, so naming the feed and the age keeps a "late" alert legible.
   const via = [];
-  if (top.source) via.push(SOURCE_NAMES[top.source] || top.source);
-  if (typeof top.age_minutes === "number") via.push(ageWords(top.age_minutes));
-  if (via.length) body.append(el("div", "alertvia", via.join(" · ")));
+  if (n.source) via.push(SOURCE_NAMES[n.source] || n.source);
+  if (typeof n.age_minutes === "number") via.push(ageWords(n.age_minutes));
 
-  if (extra > 0 && !alertExpanded) {
-    body.append(el("div", "alertmore", `+${extra} more · click to see all`));
-  } else if (extra > 0) {
-    const list = el("div", "alertlist");
-    // Newest first, and the one already shown above is not repeated.
-    alertQueue.slice(0, -1).reverse().forEach((entry) => {
-      const row = el("button", "alertrow");
-      row.type = "button";
-      row.append(el("span", "rwhy", alertReasonWords(entry)));
-      row.append(el("span", "rtitle", entry.title || "Untitled"));
-      if (typeof entry.price === "number") {
-        row.append(el("span", "rprice", money(entry.price)));
-      }
-      row.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const url = safeUrl(entry.url);
-        if (url) window.open(url, "_blank", "noopener,noreferrer");
-        alertQueue = alertQueue.filter((a) => a.id !== entry.id);
-        if (alertQueue.length <= 1) alertExpanded = false;
-        drawAlertCard();
-      });
-      list.append(row);
-    });
-    body.append(list);
-  }
-  alert.append(body);
+  const actions = el("div", "notiactions");
+  if (via.length) actions.append(el("span", "notivia", via.join(" \u00b7 ")));
+  const find = el("button", "notifind", "Find in app");
+  find.type = "button";
+  find.title = "Search GlitchGuard for this deal, even if it has expired";
+  find.addEventListener("click", (event) => {
+    event.stopPropagation();
+    startSearch(n.title || "");
+  });
+  actions.append(find);
+  body.append(actions);
+  card.append(body);
 
-  const close = el("button", "alertclose", "×");
+  const close = el("button", "noticlose", "\u00d7");
+  close.type = "button";
   close.title = "Dismiss";
+  close.setAttribute("aria-label", "Dismiss notification");
   close.addEventListener("click", (event) => {
     event.stopPropagation();
-    dismissAlert();
+    dismissNoti(n.id);
   });
-  alert.append(close);
+  card.append(close);
 
-  alert.onclick = () => {
-    // With more than one pending, the first click is "show me what I missed"
-    // rather than "open this one" - opening would discard the rest unseen.
-    if (alertQueue.length > 1 && !alertExpanded) {
-      alertExpanded = true;
-      drawAlertCard();
-      return;
-    }
-    const url = safeUrl(top.url);
+  const open = () => {
+    const url = safeUrl(n.url);
     if (url) window.open(url, "_blank", "noopener,noreferrer");
-    dismissAlert();
+    dismissNoti(n.id);
   };
+  card.addEventListener("click", open);
+  card.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") open();
+  });
+  return card;
 }
 
-async function dismissAlert() {
-  // Dismiss means all of them: the stack is one notification with several
-  // things in it, not several notifications sharing a card.
-  alertQueue = [];
-  alertExpanded = false;
-  $("alert").classList.add("hidden");
+function drawNotis() {
+  const stack = $("alert");
+  stack.replaceChildren();
+  stack.classList.toggle("hidden", notis.length === 0);
+  if (!notis.length) return;
+
+  const head = el("div", "notihead");
+  head.append(el("span", "notiheadtitle",
+    notis.length === 1 ? "1 notification" : `${notis.length} notifications`));
+  const clear = el("button", "noticlear", "Clear all");
+  clear.type = "button";
+  clear.addEventListener("click", clearNotis);
+  head.append(clear);
+  stack.append(head);
+
+  const list = el("div", "notilist");
+  const shown = notiExpanded ? notis : notis.slice(0, NOTI_VISIBLE);
+  shown.forEach((n) => list.append(buildNoti(n)));
+  stack.append(list);
+
+  if (notis.length > NOTI_VISIBLE) {
+    const more = el("button", "notimore", notiExpanded
+      ? "Show fewer" : `Show ${notis.length - NOTI_VISIBLE} more`);
+    more.type = "button";
+    more.addEventListener("click", () => {
+      notiExpanded = !notiExpanded;
+      drawNotis();
+    });
+    stack.append(more);
+  }
+}
+
+function dismissNoti(id) {
+  notis = notis.filter((n) => n.id !== id);
+  if (notis.length <= NOTI_VISIBLE) notiExpanded = false;
+  saveNotis();
+  drawNotis();
+}
+
+async function clearNotis() {
+  notis = [];
+  notiExpanded = false;
+  saveNotis();
+  drawNotis();
+  // Clearing is also "I have seen what is new", as dismissing used to be.
   const ids = (window.__deals || []).filter((d) => d.is_new).map((d) => d.id);
   await api("/api/seen", { method: "POST", body: JSON.stringify({ ids }) }).catch(() => {});
   load();
 }
+
+loadNotis();
+// Drawn once the whole script has run: the cards use constants declared
+// further down (SOURCE_NAMES), which do not exist yet at this point, and a
+// saved notification drawn now would throw and stop the page dead.
+setTimeout(drawNotis, 0);
 
 /* Keyword watch. A word the user typed is the strongest signal in the app, so
    it gets its own sound and its own card naming the match. */
@@ -1186,7 +1220,7 @@ function applySettings(cfg) {
     $("o-alertscore").textContent = String(cfg.alert_score ?? 75);
     GLOW_DISCOUNT = cfg.card_glow_discount ?? 50;
     buildSettings(cfg);
-    applyTheme(cfg.bg_theme || "espresso");
+    applyTheme(cfg.bg_theme || "sage");
     firstLoad = false;
   }
   // Created lazily so the WebGL context only exists when it is wanted.
@@ -1390,6 +1424,56 @@ function selectedSources() {
   return out;
 }
 
+/* ---------- search ----------
+   Searches everything GlitchGuard has stored, not just the open tab: expired
+   deals, hidden categories, anything past the age limit. It exists for the
+   moment a notification mentioned a deal the list no longer shows. */
+const VIEW_TITLES = {
+  feed: "Deals", amazon: "Amazon", woot: "Woot", walmart: "Walmart",
+  alerts: "Alerts", settings: "Settings",
+};
+let searchQuery = "";
+let searchTimer = null;
+
+async function runSearch() {
+  const q = searchQuery;
+  try {
+    const data = await api(`/api/search?q=${encodeURIComponent(q)}`);
+    if (q !== searchQuery) return;        // a newer query is already on its way
+    const n = data.deals.length;
+    const shown = q.length > 48 ? `${q.slice(0, 46)}\u2026` : q;
+    render(data.deals, `${n}${n === 200 ? "+" : ""} ${n === 1 ? "result" : "results"} for \u201c${shown}\u201d`);
+  } catch {}
+}
+
+function startSearch(text) {
+  if (view === "settings") setView(dataSection || "feed");
+  const box = $("search");
+  box.value = text;
+  searchQuery = text.trim();
+  document.body.classList.toggle("searching", !!searchQuery);
+  cardCache.clear();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (searchQuery) runSearch(); else load();
+}
+
+function clearSearch(reload = true) {
+  $("search").value = "";
+  searchQuery = "";
+  document.body.classList.remove("searching");
+  cardCache.clear();
+  if (reload) load();
+}
+
+$("search").addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => startSearch($("search").value), 250);
+});
+$("search").addEventListener("keydown", (event) => {
+  if (event.key === "Escape") clearSearch();
+});
+$("searchclear").addEventListener("click", () => clearSearch());
+
 async function load() {
   const params = new URLSearchParams({
     section: dataSection,
@@ -1404,7 +1488,7 @@ async function load() {
     // pills these figures are written into.
     renderSourceLatency(data.source_latency);
     applyStatus(data.status);
-    render(data.deals);
+    if (searchQuery) await runSearch(); else render(data.deals);
     applyTabCounts(data.counts);
   } catch (err) {
     $("laststate").textContent = "lost contact with the local service";
@@ -1442,12 +1526,9 @@ function setView(next) {
   document.querySelectorAll(".alertsopt").forEach((n) =>
     n.classList.toggle("hidden", next !== "alerts")
   );
-  // The list is the better version of the toast, so opening it retires one.
-  if (next === "alerts") {
-    alertQueue = [];
-    alertExpanded = false;
-    $("alert").classList.add("hidden");
-  }
+  $("pagetitle").textContent = VIEW_TITLES[next] || "Deals";
+  $("settingsfab").classList.toggle("active", isSettings);
+  if (!isSettings && searchQuery) clearSearch(false);
   openId = null;
   // The reason chip is baked into the card at build time and only appears in
   // this tab, so a card cached while another tab was open is the wrong shape.
@@ -1458,6 +1539,25 @@ function setView(next) {
 document.querySelectorAll(".tab").forEach((t) =>
   t.addEventListener("click", () => setView(t.dataset.view))
 );
+
+/* Bottom-left: light/dark and Settings. The toggle remembers which theme of
+   each kind you last used, so it flips between your two choices rather than
+   a fixed pair. */
+const THEME_PAIR_KEY = "gg.themepair.v1";
+$("themetoggle").addEventListener("click", () => {
+  const current = document.querySelector(".swatch.on")?.dataset.theme || settings.bg_theme || "sage";
+  const mode = (BG_THEMES[current] || {}).mode || "dark";
+  let pair = {};
+  try { pair = JSON.parse(localStorage.getItem(THEME_PAIR_KEY) || "{}"); } catch {}
+  pair[mode] = current;
+  const want = mode === "light" ? "dark" : "light";
+  const next = pair[want] || (want === "light" ? "sage" : "moss");
+  try { localStorage.setItem(THEME_PAIR_KEY, JSON.stringify(pair)); } catch {}
+  applyTheme(next);
+  saveSettings();
+});
+$("settingsfab").addEventListener("click", () =>
+  setView(view === "settings" ? (dataSection || "feed") : "settings"));
 
 $("clearalerts").addEventListener("click", async () => {
   const btn = $("clearalerts");
@@ -1648,7 +1748,7 @@ function saveSettings() {
     telegram_chat_id: $("tgchat").value.trim(),
     deal_ttl_hours: Number($("dealttl").value),
     alert_max_age_minutes: Number($("alertage").value),
-    bg_theme: document.querySelector(".swatch.on")?.dataset.theme || "espresso",
+    bg_theme: document.querySelector(".swatch.on")?.dataset.theme || "sage",
     card_glow: $("cardglowon").checked,
     card_glow_discount: Number($("cardglow").value),
     glow_strength: Number($("glowstrength").value),

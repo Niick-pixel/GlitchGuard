@@ -414,9 +414,12 @@ def list_deals(section="feed", min_discount=0, sort="score", limit=300,
     where = ["gone=0", "hidden=0"]
     args = []
     if section == "alerts":
-        # Filtered in SQL as well as in in_section so the age cap below can be
-        # skipped without scanning the whole table.
-        where.append("alerted=1")
+        # A record of what interrupted you, so neither the age cap nor expiry
+        # removes anything from it: 209 of 226 alerted deals had been retired
+        # by expiry and were invisible here, which is exactly the "I got the
+        # notification but the deal is gone" problem. Expired rows are kept
+        # and the card says they have expired.
+        where = ["hidden=0", "alerted=1"]
         max_age_hours = None
     if max_age_hours:
         # Applied here as well as in the expiry job so the setting bites the
@@ -468,6 +471,35 @@ def price_history_by_asin(asins):
         ):
             out.setdefault(row["asin"], []).append((row["deal_id"], row["price"]))
     return out
+
+
+def _like(word):
+    escaped = word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
+def search_deals(text, limit=200):
+    """Every deal whose title, retailer or ASIN contains all the words.
+
+    Deliberately ignores the listing's filters - the age limit, expiry and
+    hidden categories - because a search is how you find the deal that a
+    notification mentioned and the list no longer shows. Only deals you hid
+    by hand stay out. Current deals first, then newest first.
+    """
+    words = [w for w in (text or "").lower().split() if w][:8]
+    if not words:
+        return []
+    where, args = ["hidden=0"], []
+    for word in words:
+        where.append("(LOWER(title) LIKE ? ESCAPE '\\' OR LOWER(COALESCE(retailer, '')) LIKE ? ESCAPE '\\'"
+                     " OR LOWER(COALESCE(asin, '')) LIKE ? ESCAPE '\\')")
+        args += [_like(word)] * 3
+    rows = conn().execute(
+        f"SELECT * FROM deals WHERE {' AND '.join(where)}"
+        " ORDER BY gone ASC, COALESCE(posted_at, first_seen) DESC LIMIT ?",
+        args + [limit],
+    ).fetchall()
+    return [_to_dict(r) for r in rows]
 
 
 def mark_alerted(deal_id, reason, keyword=""):

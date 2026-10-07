@@ -679,36 +679,57 @@ carries a chip saying **why** it fired — `Watched "lego"`, `Pinned product`, o
 different number from when the deal was posted. Confusing those two is most of
 what made alert timing feel wrong.
 
-The tab keeps its own clock: **Hide deals older than** does not apply here, so
-a notification you have not read yet cannot disappear because the deal aged out
-of the listing. **Clear history** empties it without touching the deals.
+The tab keeps its own clock: **Hide deals older than** does not apply here, and
+deals that have since expired stay listed, dimmed and marked **Expired**, so a
+notification can never point at something you cannot find. **Clear history**
+empties it without touching the deals.
+
+That was not true until 1.0.3. The tab was cut out of the main feed query,
+which applies the age limit and skips expired deals - so on a real install 209
+of 226 alerted deals had silently vanished from it. It now has its own query.
 
 This is written by the poller at the moment it alerts, using an `alerted`
 column that existed in older databases but was missing from the migration list
-— so a fresh install never got it and nothing ever wrote to it. It is declared
+- so a fresh install never got it and nothing ever wrote to it. It is declared
 properly now, along with the reason, the keyword and the timestamp.
 
-## Stacked notifications
+## Notifications
 
-Alerts arriving while you are looking at something else collect into one card
-rather than replacing each other. The newest is shown in full with a `+2` badge
-and a `+2 more · click to see all` line; clicking expands the rest into a list,
-one row per alert with its keyword and price, and each row opens its own deal.
+Each alert is its own card, stacked newest-first in the bottom-right corner.
+Every card works on its own: click it to open the deal, **Find in app** to
+search for it, or **×** to dismiss just that one. **Clear all** at the top of
+the stack empties it. Four show at a time; the rest sit behind **Show more**.
 
-The first click on a stack **expands rather than opens** — opening the top one
-would discard everything underneath unseen. Dismissing clears the whole stack,
-because it is one notification containing several things and not several
-notifications sharing a card.
+They stay until you act on them - switching tabs does not clear them, and they
+survive a reload. A dismissed card does not come back: the latest score alert
+is re-sent with every status poll, so every alert that has been shown is
+remembered and only a genuinely new one is added.
 
-Arriving at the Alerts tab retires the toast, and an alert that fires while
-that tab is open never raises one: the list is already on screen and says the
-same thing better.
+Watched-word and pinned alerts carry the same gold edge as their gold card.
 
-The stacked paper edges are `box-shadow` layers with zero blur and an insetting
-spread, not pseudo-elements. `.alert` is `position: fixed` with its own
-`z-index`, so it forms a stacking context, and a negative `z-index` child would
-paint on top of the card's own background instead of behind it — the same trap
-the card glow hit.
+## Search
+
+The search box at the top of every tab searches **everything GlitchGuard has
+stored**, not just what the tab shows: expired deals, anything past the age
+limit, hidden categories. Only deals you hid by hand stay out. Every word must
+match the title, retailer or ASIN, current deals come first, and expired ones
+are dimmed and labelled. It is the answer to "I got the notification, but the
+deal is not in the list" - and **Find in app** on a notification runs exactly
+that search for you. Esc or × clears it.
+
+## Look and feel
+
+A calm, centred layout: the section tabs as pills in the middle of the top bar,
+one centred column for the content, and every list control - search, minimum
+discount, sort, export - as the same soft pill beside the page title. Settings
+and a light/dark toggle sit as small round buttons in the bottom-left corner.
+Controls you set once - check interval, chime threshold, sound, screen glow -
+live in Settings rather than in the toolbar.
+
+**Sage** is the default theme: a pale green-grey ground, near-white cards and a
+muted forest-green accent, with **Moss** as its dark counterpart. The toggle
+flips between whichever light and dark themes you last used. Small grey text
+measures 4.6:1 against the Sage ground, above the 4.5:1 accessibility minimum.
 
 ## Promo codes
 

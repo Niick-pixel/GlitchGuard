@@ -43,7 +43,7 @@ DEFAULTS = {
     "sound_discount": 0,
     "screen_glow": True,
     # Appearance, adjustable from the Settings tab.
-    "bg_theme": "espresso",
+    "bg_theme": "sage",
     "card_glow": True,
     "card_glow_discount": 50,
     # Glow appearance. "rainbow" cycles the four brand-adjacent hues; "solid"
