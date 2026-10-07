@@ -295,7 +295,8 @@ class Poller:
 
         fresh = []
         for deal in (store.get(i) for i in fresh_ids):
-            if not deal or filters.suppressed(deal, cats, words):
+            # Same rule as the list: what you have filtered out never rings.
+            if not deal or filters.suppressed(deal, cats, words, filters.price_range(cfg)):
                 continue
             if filters.watchlist_match(deal, pinned):
                 deal["_pinned"] = True

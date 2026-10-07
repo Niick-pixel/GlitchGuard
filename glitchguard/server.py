@@ -200,6 +200,7 @@ class Handler(BaseHTTPRequestHandler):
             exclude_categories=cfg.get("excluded_categories") or (),
             exclude_keywords=keywords,
             max_age_hours=cfg.get("deal_ttl_hours"),
+            prices=filters.price_range(cfg),
         )
         # The Alerts tab has its own query. It used to be cut out of the feed
         # query above, which applies the age limit and skips expired deals,
@@ -323,6 +324,7 @@ def export_rows(section):
         section=section, sort=cfg.get("sort", "score"), limit=5000,
         exclude_categories=cfg.get("excluded_categories") or (),
         exclude_keywords=keywords, max_age_hours=cfg.get("deal_ttl_hours"),
+        prices=filters.price_range(cfg),
     )
     buf = io.StringIO()
     writer = csv.writer(buf)

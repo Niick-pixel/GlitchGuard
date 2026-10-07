@@ -87,6 +87,47 @@
         <option value="savings">Largest saving</option>
       </select>
     </label>
+    <div class="popwrap">
+      <button id="filterbtn" class="chip" type="button" aria-expanded="false" aria-controls="filterpop">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+          <path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Filters <span id="filtercount" class="chipcount hidden"></span>
+      </button>
+      <div id="filterpop" class="popover filterpop hidden" role="dialog" aria-label="Filters">
+        <div class="pophead">
+          <h4>Filters</h4>
+          <button id="filterreset" class="linkish" type="button">Reset</button>
+        </div>
+        <div class="popsec">
+          <div class="poplabel">Hide product types <span>also silences their alerts</span></div>
+          <div id="categories" class="catlist compact"></div>
+        </div>
+        <div class="popsec">
+          <div class="poplabel">Price range <span>blank means no limit</span></div>
+          <div class="pricerange">
+            <label class="moneyin"><span>$</span><input type="number" id="minprice" min="0" step="1" placeholder="Min"></label>
+            <span class="dash">&ndash;</span>
+            <label class="moneyin"><span>$</span><input type="number" id="maxprice" min="0" step="1" placeholder="Max"></label>
+          </div>
+        </div>
+        <div class="popsec">
+          <label class="poplabel" for="keywords">Hide titles containing <span>comma separated</span></label>
+          <input type="text" id="keywords" class="kwinput" placeholder="e.g. refurbished, gift card, case" autocomplete="off">
+        </div>
+        <div class="popsec poprow">
+          <label class="poplabel" for="dealttl">Hide deals older than</label>
+          <select id="dealttl">
+            <option value="3">3 hours</option>
+            <option value="6">6 hours</option>
+            <option value="12">12 hours</option>
+            <option value="24">24 hours</option>
+            <option value="48">2 days</option>
+            <option value="168">1 week</option>
+          </select>
+        </div>
+      </div>
+    </div>
     <label class="chip toggle amazonopt hidden">
       <input type="checkbox" id="livecheck">
       <span>Live Amazon check</span>
@@ -108,313 +149,189 @@
 </div>
 
 <section id="settingsview" class="settingsview hidden">
+  <nav class="setnav" aria-label="Settings sections">
+    <button class="setnavbtn on" type="button" data-sec="appearance">Appearance</button>
+    <button class="setnavbtn" type="button" data-sec="alerts">Alerts</button>
+    <button class="setnavbtn" type="button" data-sec="watching">Watching</button>
+    <button class="setnavbtn" type="button" data-sec="sources">Sources</button>
+    <button class="setnavbtn" type="button" data-sec="delivery">Notifications</button>
+    <button class="setnavbtn" type="button" data-sec="app">App &amp; updates</button>
+  </nav>
 
-  <div class="setcard">
+  <div class="setpanels">
+
+  <div class="setsec" data-sec="appearance">
     <h3>Appearance</h3>
-
-    <div class="setrow">
-      <label class="setlabel">Background</label>
-      <div id="themes" class="swatches"></div>
+    <div class="srow block">
+      <div class="slabel">Theme</div>
+      <div id="themes" class="themegrid wide"></div>
     </div>
-
-    <div class="setrow">
-      <label class="setlabel" for="cardglow">
-        Card glow <span class="setnote">deals at or above this discount get the aurora</span>
-      </label>
-      <div class="rangerow">
-        <input type="range" id="cardglow" min="0" max="95" step="5" value="50">
-        <output id="o-cardglow">50%</output>
+    <div class="srow">
+      <label class="slabel" for="cardglowon">Card glow<span>A coloured halo behind big discounts</span></label>
+      <div class="sctl"><input type="checkbox" id="cardglowon" class="switch"></div>
+    </div>
+    <div class="srow">
+      <label class="slabel" for="cardglow">Glow from<span>Discount that earns the halo</span></label>
+      <div class="sctl rangerow"><input type="range" id="cardglow" min="0" max="95" step="5" value="50"><output id="o-cardglow">50%</output></div>
+    </div>
+    <div class="srow">
+      <label class="slabel" for="glowstrength">Glow strength</label>
+      <div class="sctl rangerow"><input type="range" id="glowstrength" min="0" max="100" step="5" value="70"><output id="o-glowstrength">70</output></div>
+    </div>
+    <div class="srow">
+      <div class="slabel">Glow colour<span>Cards and screen edge</span></div>
+      <div class="sctl">
+        <div class="seg" id="glowstyle">
+          <button type="button" class="segbtn" data-style="rainbow">Rainbow</button>
+          <button type="button" class="segbtn" data-style="solid">Single</button>
+          <input type="color" id="glowcolor" value="#e9a23c" aria-label="Glow colour">
+        </div>
       </div>
     </div>
-
-    <div class="setrow">
-      <label class="setlabel" for="glowstrength">
-        Glow strength <span class="setnote">how far the light spreads and how bright it reads</span>
-      </label>
-      <div class="rangerow">
-        <input type="range" id="glowstrength" min="0" max="100" step="5" value="70">
-        <output id="o-glowstrength">70</output>
-      </div>
+    <div class="srow">
+      <label class="slabel" for="screenglowint">Screen-edge light<span>When something lands; 0 turns it off</span></label>
+      <div class="sctl rangerow"><input type="range" id="screenglowint" min="0" max="100" step="5" value="45"><output id="o-screenglowint">45</output></div>
     </div>
-
-    <div class="setrow">
-      <label class="setlabel" for="screenglowint">
-        Screen glow <span class="setnote">the light around the window edge when something lands — 0 turns it off</span>
-      </label>
-      <div class="rangerow">
-        <input type="range" id="screenglowint" min="0" max="100" step="5" value="45">
-        <output id="o-screenglowint">45</output>
-      </div>
+    <div class="srow">
+      <label class="slabel" for="lowpower">Low-power mode<span>Stops all motion; halos stay</span></label>
+      <div class="sctl"><input type="checkbox" id="lowpower" class="switch"></div>
     </div>
-
-    <div class="setrow">
-      <label class="setlabel">
-        Glow colour <span class="setnote">used by both the cards and the screen edge</span>
-      </label>
-      <div class="seg" id="glowstyle">
-        <button type="button" class="segbtn" data-style="rainbow">Rainbow</button>
-        <button type="button" class="segbtn" data-style="solid">Single colour</button>
-        <input type="color" id="glowcolor" value="#e9a23c" aria-label="Glow colour">
-      </div>
-    </div>
-
-    <label class="toggle setinline">
-      <input type="checkbox" id="cardglowon">
-      <span>Enable card glow</span>
-    </label>
   </div>
 
-  <div class="setcard">
-    <h3>App</h3>
-    <p class="setintro">
-      How GlitchGuard behaves on this machine.
-    </p>
-
-    <label class="toggle setinline">
-      <input type="checkbox" id="lowpower">
-      <span>Low-power mode</span>
-    </label>
-    <p class="sethint" style="margin-top:4px">
-      Stops every moving effect - the glow drift, the status ring and the
-      screen-edge light - while keeping the halos. Effects already pause on
-      their own whenever this window is not focused.
-    </p>
-
-    <div id="desktopopts" class="hidden">
-      <label class="toggle setinline" style="margin-top:14px">
-        <input type="checkbox" id="autostart">
-        <span>Start with Windows</span>
-      </label>
-      <label class="toggle setinline">
-        <input type="checkbox" id="nativetoasts">
-        <span>Windows notifications while hidden</span>
-      </label>
-      <div class="setrow" style="margin:10px 0 0">
-        <button class="btn" id="testtoast" type="button">Send a test notification</button>
-        <span id="testtoastresult" class="sethint" style="margin-left:10px"></span>
-      </div>
-      <p class="sethint" style="margin-top:8px">
-        Closing the window keeps GlitchGuard watching from the system tray.
-        Quit from the tray icon to stop it completely.
-      </p>
+  <div class="setsec hidden" data-sec="alerts">
+    <h3>Alerts</h3>
+    <div class="srow">
+      <label class="slabel" for="alertscore">Notify at score<span>How strong a find must be</span></label>
+      <div class="sctl rangerow"><input type="range" id="alertscore" min="40" max="100" step="5" value="75"><output id="o-alertscore">75</output></div>
     </div>
-
-    <label class="toggle setinline" style="margin-top:14px">
-      <input type="checkbox" id="checkupdates">
-      <span>Check for updates</span>
-    </label>
-    <label class="toggle setinline" id="autoupdaterow">
-      <input type="checkbox" id="autoupdate">
-      <span>Install updates automatically</span>
-    </label>
-    <p class="sethint" id="versionline" style="margin-top:4px">Version -</p>
-    <div class="setrow" style="margin:8px 0 0">
-      <button class="btn" id="checknow" type="button">Check now</button>
-      <button class="btn primary hidden" id="updaterestart" type="button">Restart to update</button>
-    </div>
-    <p class="sethint" style="margin-top:8px">
-      Updates are only installed if they carry a valid GlitchGuard signature,
-      and never touch your settings or deal history.
-    </p>
-  </div>
-
-  <div class="setcard">
-    <h3>When to alert</h3>
-    <p class="setintro">
-      Two independent gates. A find has to be strong enough <em>and</em> recent
-      enough before anything makes a sound.
-    </p>
-
-    <div class="setrow">
-      <label class="setlabel" for="alertscore">
-        Notify at score <span class="setnote">how strong a find must be to raise a card</span>
-      </label>
-      <div class="rangerow">
-        <input type="range" id="alertscore" min="40" max="100" step="5" value="75">
-        <output id="o-alertscore">75</output>
+    <div class="srow">
+      <label class="slabel" for="alertage">Only if posted within<span>Feeds can surface deals hours late</span></label>
+      <div class="sctl">
+        <select id="alertage">
+          <option value="30">30 minutes</option>
+          <option value="60">1 hour</option>
+          <option value="120">2 hours</option>
+          <option value="360">6 hours</option>
+          <option value="0">Any age</option>
+        </select>
       </div>
     </div>
-
-    <div class="setrow">
-      <label class="setlabel" for="alertage">
-        Only alert on deals posted within
-        <span class="setnote">a deal can be new to us but hours old — the popular feed surfaces items long after they go up</span>
-      </label>
-      <select id="alertage">
-        <option value="30">30 minutes</option>
-        <option value="60">1 hour</option>
-        <option value="120">2 hours</option>
-        <option value="360">6 hours</option>
-        <option value="0">Any age</option>
-      </select>
+    <div class="srow">
+      <label class="slabel" for="sounddiscount">Chime at<span>Sound only, no card</span></label>
+      <div class="sctl">
+        <select id="sounddiscount">
+          <option value="0">Off</option>
+          <option value="50">50%+ off</option>
+          <option value="60">60%+ off</option>
+          <option value="70">70%+ off</option>
+          <option value="80">80%+ off</option>
+          <option value="90">90%+ off</option>
+        </select>
+      </div>
     </div>
-
-    <div class="setrow">
-      <label class="setlabel" for="sounddiscount">
-        Chime at <span class="setnote">a sound only, no notification, for any new deal at or above this discount</span>
-      </label>
-      <select id="sounddiscount">
-        <option value="0">Off</option>
-        <option value="50">50%+ off</option>
-        <option value="60">60%+ off</option>
-        <option value="70">70%+ off</option>
-        <option value="80">80%+ off</option>
-        <option value="90">90%+ off</option>
-      </select>
+    <div class="srow">
+      <label class="slabel" for="sound">Sound alerts</label>
+      <div class="sctl"><input type="checkbox" id="sound" class="switch"></div>
     </div>
-
-    <label class="toggle setinline">
-      <input type="checkbox" id="sound">
-      <span>Sound alerts</span>
-    </label>
-    <label class="toggle setinline">
-      <input type="checkbox" id="screenglow">
-      <span>Screen glow when something lands</span>
-    </label>
-
-    <p class="sethint">
-      Hidden product types never raise an alert, whatever they score.
-    </p>
-
-    <div class="setrow" style="margin-top:18px">
-      <label class="setlabel">
-        Alert from these sources
-        <span class="setnote">a feed worth listing is not always worth interrupting for — the figure is each one's measured delay</span>
-      </label>
-      <div id="alertsources" class="catlist"></div>
+    <div class="srow">
+      <label class="slabel" for="screenglow">Screen-edge light on alerts</label>
+      <div class="sctl"><input type="checkbox" id="screenglow" class="switch"></div>
     </div>
-    <p class="sethint">
-      Most of the gap between a deal going up and an alert arriving belongs to
-      the feed that carried it, not to the app. Unticking a slow feed keeps its
-      deals in the list but stops them ringing. Pinned products ignore this.
-    </p>
+    <div class="srow block">
+      <div class="slabel">Alert from these sources<span>Each shows its measured delay; unticked feeds still list, but never ring</span></div>
+      <div id="alertsources" class="catlist compact"></div>
+    </div>
   </div>
 
-  <div class="setcard">
+  <div class="setsec hidden" data-sec="watching">
     <h3>Watching</h3>
-    <p class="setintro">
-      Things you have asked for by name. These outrank the score — a watched
-      find alerts even when it would not clear the threshold above.
-    </p>
-
-    <div class="setrow">
-      <label class="setlabel" for="watchwords">
-        Watch keywords
-        <span class="setnote">a match plays a different sound and names the word</span>
-      </label>
-      <input type="text" id="watchwords" class="kwinput"
-             placeholder="e.g. airpods, lego, dyson" autocomplete="off">
+    <div class="srow block">
+      <label class="slabel" for="watchwords">Watch keywords<span>Whole words, comma separated; matches glow gold and ring with their own sound</span></label>
+      <input type="text" id="watchwords" class="kwinput" placeholder="e.g. airpods, lego, dyson" autocomplete="off">
     </div>
-
-    <div class="setrow">
-      <label class="setlabel" for="watchlist">
-        Pinned products
-        <span class="setnote">ASINs or product links, one per line — these always alert and sort to the top</span>
-      </label>
-      <textarea id="watchlist" class="kwinput kwarea" rows="4" spellcheck="false"
+    <div class="srow block">
+      <label class="slabel" for="watchlist">Pinned products<span>ASINs or links, one per line; always alert, whatever the score or age</span></label>
+      <textarea id="watchlist" class="kwinput kwarea" rows="3" spellcheck="false"
                 placeholder="B0CV6WWPG2&#10;https://www.amazon.com/dp/B08N5WRWNW"></textarea>
     </div>
-    <p class="sethint">
-      Pinned items ignore the age and score gates entirely. Paste a full link and
-      the ASIN is pulled out of it.
-    </p>
   </div>
 
-  <div class="setcard">
-    <h3>What to show</h3>
-    <div class="setrow">
-      <label class="setlabel" for="dealttl">
-        Hide deals older than
-        <span class="setnote">measured from when the deal was posted — the same age shown on each card</span>
-      </label>
-      <select id="dealttl">
-        <option value="3">3 hours</option>
-        <option value="6">6 hours</option>
-        <option value="12">12 hours</option>
-        <option value="24">24 hours</option>
-        <option value="48">2 days</option>
-        <option value="168">1 week</option>
-      </select>
+  <div class="setsec hidden" data-sec="sources">
+    <h3>Sources</h3>
+    <div class="srow">
+      <label class="slabel" for="interval">Check every<span>Jittered so requests never form a pattern</span></label>
+      <div class="sctl">
+        <select id="interval">
+          <option value="120">2 minutes</option>
+          <option value="180">3 minutes</option>
+          <option value="300">5 minutes</option>
+          <option value="600">10 minutes</option>
+          <option value="1800">30 minutes</option>
+        </select>
+      </div>
+    </div>
+    <div class="srow block">
+      <div class="slabel">Feeds to poll<span>Turning one off stops it on the next check</span></div>
+      <div id="sourcelist" class="catlist compact"></div>
     </div>
   </div>
 
-  <div class="setcard">
-    <h3>Send alerts elsewhere</h3>
-    <p class="setintro">
-      Optional. Off unless a destination is filled in, and only high-scoring or
-      watched finds are ever sent — never the whole feed.
-    </p>
-
-    <div class="setrow">
-      <label class="setlabel" for="discordhook">
-        Discord webhook URL
-        <span class="setnote">channel settings → integrations → webhooks</span>
-      </label>
-      <input type="text" id="discordhook" class="kwinput" autocomplete="off"
-             placeholder="https://discord.com/api/webhooks/…">
+  <div class="setsec hidden" data-sec="delivery">
+    <h3>Notifications</h3>
+    <div id="desktopopts" class="hidden">
+      <div class="srow">
+        <label class="slabel" for="nativetoasts">Windows notifications<span>While the window is hidden or in the background</span></label>
+        <div class="sctl"><input type="checkbox" id="nativetoasts" class="switch"></div>
+      </div>
+      <div class="srow">
+        <div class="slabel">Test<span id="testtoastresult"></span></div>
+        <div class="sctl"><button class="btn" id="testtoast" type="button">Send a test</button></div>
+      </div>
     </div>
-
-    <div class="setrow">
-      <label class="setlabel" for="tgtoken">
-        Telegram bot token
-        <span class="setnote">from @BotFather</span>
-      </label>
-      <input type="text" id="tgtoken" class="kwinput" autocomplete="off"
-             placeholder="123456:ABC-DEF…">
+    <div class="srow block">
+      <label class="slabel" for="discordhook">Discord webhook<span>Channel settings &rarr; Integrations &rarr; Webhooks</span></label>
+      <input type="text" id="discordhook" class="kwinput" autocomplete="off" placeholder="https://discord.com/api/webhooks/&hellip;">
     </div>
-
-    <div class="setrow">
-      <label class="setlabel" for="tgchat">
-        Telegram chat ID
-        <span class="setnote">message the bot once, then use @userinfobot to get your ID</span>
-      </label>
-      <input type="text" id="tgchat" class="kwinput" autocomplete="off"
-             placeholder="987654321">
+    <div class="srow block two">
+      <div>
+        <label class="slabel" for="tgtoken">Telegram bot token<span>From @BotFather</span></label>
+        <input type="text" id="tgtoken" class="kwinput" autocomplete="off" placeholder="123456:ABC-DEF&hellip;">
+      </div>
+      <div>
+        <label class="slabel" for="tgchat">Telegram chat ID<span>Ask @userinfobot</span></label>
+        <input type="text" id="tgchat" class="kwinput" autocomplete="off" placeholder="987654321">
+      </div>
     </div>
-
-    <div class="setrow">
-      <button class="btn" id="testnotify" type="button">Send a test message</button>
-      <span id="testnotifyresult" class="sethint" style="margin-left:10px"></span>
+    <div class="srow">
+      <div class="slabel">Only high-scoring and watched finds are sent<span id="testnotifyresult"></span></div>
+      <div class="sctl"><button class="btn" id="testnotify" type="button">Send a test</button></div>
     </div>
-    <p class="sethint">
-      Stored in <code>data/settings.json</code> on this machine and never sent
-      anywhere except the service you configured.
-    </p>
   </div>
 
-  <div class="setcard">
-    <h3>Deal sources</h3>
-    <div class="setrow">
-      <label class="setlabel" for="interval">
-        Check every <span class="setnote">a little jitter is added so requests never form a pattern</span>
-      </label>
-      <select id="interval">
-        <option value="120">2 minutes</option>
-        <option value="180">3 minutes</option>
-        <option value="300">5 minutes</option>
-        <option value="600">10 minutes</option>
-        <option value="1800">30 minutes</option>
-      </select>
+  <div class="setsec hidden" data-sec="app">
+    <h3>App &amp; updates</h3>
+    <div class="srow">
+      <label class="slabel" for="autostart">Start with Windows<span>Opens quietly in the tray</span></label>
+      <div class="sctl"><input type="checkbox" id="autostart" class="switch"></div>
     </div>
-    <div id="sourcelist" class="catlist"></div>
-    <p class="sethint">Turning one off stops polling it on the next cycle.</p>
+    <div class="srow">
+      <label class="slabel" for="checkupdates">Check for updates</label>
+      <div class="sctl"><input type="checkbox" id="checkupdates" class="switch"></div>
+    </div>
+    <div class="srow" id="autoupdaterow">
+      <label class="slabel" for="autoupdate">Install updates automatically<span>Signed releases only; settings are never touched</span></label>
+      <div class="sctl"><input type="checkbox" id="autoupdate" class="switch"></div>
+    </div>
+    <div class="srow">
+      <div class="slabel"><span id="versionline" class="versionline">Version -</span></div>
+      <div class="sctl">
+        <button class="btn" id="checknow" type="button">Check now</button>
+        <button class="btn primary hidden" id="updaterestart" type="button">Restart to update</button>
+      </div>
+    </div>
   </div>
 
-  <div class="setcard">
-    <h3>Hidden product types</h3>
-    <div id="categories" class="catlist"></div>
-
-    <div class="setrow" style="margin-top:16px">
-      <label class="setlabel" for="keywords">Hide titles containing</label>
-      <input type="text" id="keywords" class="kwinput"
-             placeholder="e.g. novel, gift card, vitamin" autocomplete="off">
-    </div>
-    <p class="sethint">
-      Comma separated. Title matching catches most books, but a few slip through
-      with no bookish words in the name — add them here, or use Hide on any card.
-    </p>
   </div>
-
 </section>
 
 <div id="grid" class="grid"></div>
@@ -422,8 +339,13 @@
 
 </main>
 
+<div id="themepop" class="popover themepop hidden" role="dialog" aria-label="Theme">
+  <h4>Theme</h4>
+  <div id="themepopgrid" class="themegrid"></div>
+</div>
+
 <div class="fabs">
-  <button id="themetoggle" class="fab" type="button" title="Light / dark" aria-label="Switch light and dark">
+  <button id="themetoggle" class="fab" type="button" title="Theme" aria-label="Choose a theme" aria-expanded="false" aria-controls="themepop">
     <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
       <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/>
       <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"

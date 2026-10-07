@@ -28,10 +28,61 @@ RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 MUTEX_NAME = "Local\\GlitchGuard.SingleInstance"
 INSTANCE_FILE = os.path.join(config.DATA_DIR, "instance.json")
 LOG_FILE = os.path.join(config.DATA_DIR, "glitchguard.log")
+WINDOW_FILE = os.path.join(config.DATA_DIR, "window.json")
+DEFAULT_SIZE = (1460, 940)
+MIN_SIZE = (760, 560)
 ERROR_ALREADY_EXISTS = 183
 
 
 # ---------------------------------------------------------------- utilities
+
+def _point_on_a_monitor(x, y):
+    """True if (x, y) lies on any connected monitor.
+
+    Checked in both logical and physical pixels, because whether Windows
+    scales the coordinates for this call depends on the process's DPI
+    awareness at the moment it is made - accepting either keeps a correct
+    position, and only a point on neither is treated as off-screen.
+    """
+    class POINT(ctypes.Structure):
+        _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+    user32 = ctypes.windll.user32
+    try:
+        scale = user32.GetDpiForSystem() / 96
+    except Exception:
+        scale = 1.0
+    for factor in (1.0, scale):
+        point = POINT(int(x * factor), int(y * factor))
+        if user32.MonitorFromPoint(point, 0):     # 0 = MONITOR_DEFAULTTONULL
+            return True
+    return False
+
+
+def _load_geometry():
+    """Saved size and position, cleaned up so the window always opens usable.
+
+    A position whose title bar is no longer on any monitor - the monitor it
+    was on has been unplugged, say - is dropped, and the window centres
+    instead of opening somewhere it cannot be seen or dragged back from.
+    """
+    try:
+        with open(WINDOW_FILE, encoding="utf-8") as fh:
+            saved = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    geom = {}
+    width, height = saved.get("width"), saved.get("height")
+    if isinstance(width, int) and isinstance(height, int):
+        geom["width"] = max(width, MIN_SIZE[0])
+        geom["height"] = max(height, MIN_SIZE[1])
+    x, y = saved.get("x"), saved.get("y")
+    if isinstance(x, int) and isinstance(y, int):
+        grab_x = x + min(geom.get("width", DEFAULT_SIZE[0]), 400) // 2
+        if _point_on_a_monitor(grab_x, y + 16):
+            geom["x"], geom["y"] = x, y
+    geom["maximized"] = bool(saved.get("maximized"))
+    return geom
+
 
 def _open_log():
     """A windowed build has no console, so output needs somewhere to go.
@@ -252,6 +303,59 @@ class Shell:
     def _on_restored(self):
         self.hidden = False
 
+    # -- remembering size and position -------------------------------------
+    def _window_state(self):
+        """normal / max / min, asked of Windows directly.
+
+        pywebview raises its maximized and resized events on separate
+        threads, so their order is not guaranteed; asking the window itself
+        is the only way not to save a maximised size as the normal one.
+        """
+        try:
+            hwnd = int(self.window.native.Handle.ToInt64())
+        except Exception:
+            return "normal"
+        user32 = ctypes.windll.user32
+        if user32.IsIconic(hwnd):
+            return "min"
+        if user32.IsZoomed(hwnd):
+            return "max"
+        return "normal"
+
+    def _on_resized(self, width, height):
+        state = self._window_state()
+        if state == "min":
+            return
+        self.geometry["maximized"] = state == "max"
+        if state == "normal":
+            self.geometry["width"], self.geometry["height"] = width, height
+        self._save_geometry_soon()
+
+    def _on_moved(self, x, y):
+        # A minimised window is parked at -32000,-32000; saving that would
+        # reopen the app off every screen.
+        if self._window_state() != "normal" or x <= -10000 or y <= -10000:
+            return
+        self.geometry["x"], self.geometry["y"] = x, y
+        self._save_geometry_soon()
+
+    def _save_geometry_soon(self):
+        # Dragging fires these dozens of times a second; write once it settles.
+        if self._geom_timer:
+            self._geom_timer.cancel()
+        self._geom_timer = threading.Timer(0.6, self._save_geometry)
+        self._geom_timer.daemon = True
+        self._geom_timer.start()
+
+    def _save_geometry(self):
+        try:
+            tmp = WINDOW_FILE + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(self.geometry, fh)
+            os.replace(tmp, WINDOW_FILE)
+        except OSError:
+            traceback.print_exc()
+
     # -- tray --------------------------------------------------------------
     def _start_tray(self):
         import pystray
@@ -438,14 +542,29 @@ class Shell:
         self._start_toasts()
         self._start_tray()
 
+        # Reopen exactly where and how big it was last time.
+        saved = _load_geometry()
+        self.geometry = {
+            "width": saved.get("width", DEFAULT_SIZE[0]),
+            "height": saved.get("height", DEFAULT_SIZE[1]),
+            "maximized": saved.get("maximized", False),
+        }
+        if "x" in saved:
+            self.geometry["x"], self.geometry["y"] = saved["x"], saved["y"]
+        self._geom_timer = None
+
         self.window = webview.create_window(
             APP_NAME, f"http://127.0.0.1:{port}/?t={server.TOKEN}",
-            js_api=Api(self), width=1380, height=900, min_size=(760, 560),
-            hidden=self.hidden, background_color="#211d18",
+            js_api=Api(self), width=self.geometry["width"],
+            height=self.geometry["height"], x=saved.get("x"), y=saved.get("y"),
+            min_size=MIN_SIZE, maximized=self.geometry["maximized"],
+            hidden=self.hidden, background_color="#e6e8dc",
         )
         self.window.events.closing += self._on_closing
         self.window.events.minimized += self._on_minimized
         self.window.events.restored += self._on_restored
+        self.window.events.resized += self._on_resized
+        self.window.events.moved += self._on_moved
 
         try:
             webview.start(

@@ -110,12 +110,19 @@ def _migrate(db):
             " WHERE asin IS NOT NULL AND asin<>'' AND prev_price > 0"
         )
 
-    # Classify rows stored before categories existed.
+    # Classify rows stored before categories existed - or every row, once,
+    # when the classifier's rules have changed since they were stored.
+    have = db.execute("SELECT value FROM meta WHERE key='classifier_version'").fetchone()
+    redo_all = not have or have["value"] != filters.CLASSIFIER_VERSION
     for row in db.execute(
-        "SELECT id, title, asin, price, list_price FROM deals WHERE category IS NULL"
+        "SELECT id, title, asin, price, list_price FROM deals"
+        + ("" if redo_all else " WHERE category IS NULL")
     ).fetchall():
         db.execute("UPDATE deals SET category=? WHERE id=?",
                    (filters.classify(dict(row)), row["id"]))
+    db.execute("INSERT INTO meta(key, value) VALUES('classifier_version', ?) "
+               "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+               (filters.CLASSIFIER_VERSION,))
     db.commit()
 
 
@@ -408,7 +415,8 @@ def in_section(deal, section):
 
 
 def list_deals(section="feed", min_discount=0, sort="score", limit=300,
-               exclude_categories=(), exclude_keywords=(), max_age_hours=None):
+               exclude_categories=(), exclude_keywords=(), max_age_hours=None,
+               prices=(0, 0)):
     # Category and keyword exclusion is applied in Python below rather than
     # here, so there is exactly one definition of "hidden" shared with alerts.
     where = ["gone=0", "hidden=0"]
@@ -453,7 +461,7 @@ def list_deals(section="feed", min_discount=0, sort="score", limit=300,
     return [
         d for d in (_to_dict(r) for r in rows)
         if in_section(d, section)
-        and not filters.suppressed(d, exclude_categories, exclude_keywords)
+        and not filters.suppressed(d, exclude_categories, exclude_keywords, prices)
     ]
 
 

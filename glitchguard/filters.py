@@ -61,10 +61,102 @@ CATEGORIES = {
         "label": "Clothing & shoes",
         "patterns": (
             r"\b(?:t-?shirts?|hoodies?|sweater|jacket|jeans|leggings|socks|"
-            r"sneakers|boots|sandals|dress|blouse|bra|underwear|swimsuit)\b",
+            r"sneakers|boots|sandals|dress|blouse|bra|underwear|swimsuit|tees?|shirts?|"
+            r"pants|shorts|joggers|pajamas|beanies?)\b",
+        ),
+    },
+    # Below: added in 1.0.4. Each list is deliberately narrow - a word that
+    # could plausibly name an electronics deal is left out, because a price
+    # error is most often there and hiding one by accident is the worst
+    # mistake this can make. Anything unmatched stays uncategorised and shown.
+    "offers": {
+        "label": "Cashback & sign-up offers",
+        "patterns": (
+            r"\bcash ?back\b", r"\breferral\b", r"\bsign[- ]?up bonus\b",
+            r"\bstatement credit\b", r"\bmoney maker\b", r"\bfree money\b",
+            r"\bpaying \$\d+", r"\bbank (?:bonus|account)\b",
+            r"\bgift ?cards?\b", r"\begift\b",
+        ),
+    },
+    "media": {
+        "label": "Movies & music",
+        "patterns": (
+            r"\bblu-?ray\b", r"\b4k ultra hd\b", r"\bdvds?\b", r"\bvinyl\b",
+            r"\baudio cd\b", r"\b\d+-disc\b", r"\bsteelbook\b",
+        ),
+    },
+    "games": {
+        "label": "Video games & consoles",
+        "patterns": (
+            r"\b(?:ps5|ps4|playstation|xbox|nintendo|switch 2)\b",
+            r"\b(?:digital code|game key|steam key)\b",
+        ),
+    },
+    "baby": {
+        "label": "Baby",
+        "patterns": (
+            r"\b(?:baby|infant|toddler|diapers?|stroller|pacifier|nursery)\b",
+        ),
+    },
+    "toys": {
+        "label": "Toys & kids",
+        "patterns": (
+            r"\b(?:lego|toys?|playset|play set|action figures?|plush|squishmallows?|"
+            r"jigsaw|puzzles?|dolls?|board games?|nerf|hot wheels|kids'?)\b",
+        ),
+    },
+    "pets": {
+        "label": "Pet supplies",
+        "patterns": (
+            r"\b(?:dog|cat|puppy|kitten|pet)s?\b.*\b(?:food|treats?|litter|toys?|beds?|"
+            r"leash|collar|harness|chews?|crate)\b",
+            r"\bcat litter\b",
+        ),
+    },
+    "jewelry": {
+        "label": "Jewelry",
+        "patterns": (
+            r"\bjewelry\b", r"\b(?:necklace|bracelet|earrings|anklet)\b",
+            r"\b(?:diamond|sterling|gold|silver)\b.*\brings?\b",
+        ),
+    },
+    "sports": {
+        "label": "Sports & outdoors",
+        "patterns": (
+            r"\b(?:golf|tennis|yoga|dumbbells?|kettlebells?|treadmill|bicycle|camping|tent|"
+            r"fishing|hiking|kayak|nfl|nba|mlb|nhl|ncaa)\b",
+        ),
+    },
+    "tools": {
+        "label": "Tools & auto",
+        "patterns": (
+            r"\b(?:drill|impact driver|circular saw|wrench|socket set|tool set|tool kit|"
+            r"screwdrivers?|chainsaw|jawsaw|leaf blower|pressure washer|lawn mower|"
+            r"string trimmer|tires?|motor oil|dash ?cam|jump starter|wiper blades?)\b",
+        ),
+    },
+    "office": {
+        "label": "Office & school",
+        "patterns": (
+            r"\b(?:ink cartridges?|toner cartridges?|pens|markers|highlighters|stapler|"
+            r"school supplies|office chair|composition books?)\b",
+        ),
+    },
+    "home": {
+        "label": "Home & kitchen",
+        "patterns": (
+            r"\b(?:sheet set|duvet|comforter|pillows?|blanket|throw|towels?|curtains?|"
+            r"area rug|mattress|cookware|skillet|frying pan|knife set|dinnerware|mugs?|"
+            r"tumbler|air fryer|blender|coffee maker|kettle|vacuum|mop|organizer|"
+            r"storage bins?|lamp|chandelier|faucet|bar stools?|sofa|couch|dresser|"
+            r"bookshelf|bed frame|candles?|pendant lights?)\b",
         ),
     },
 }
+
+# Bumped whenever the rules above change, so stored categories are redone
+# once instead of only for deals seen again.
+CLASSIFIER_VERSION = "2"
 
 COMPILED = {
     key: [re.compile(p, re.I) for p in spec["patterns"]]
@@ -141,7 +233,18 @@ def _looks_like_cheap_media(deal, title):
     return len(title.split()) >= 2
 
 
-def suppressed(deal, excluded_categories, keywords):
+def price_range(cfg):
+    """(low, high) from settings; 0 or blank means no bound."""
+    def num(key):
+        try:
+            value = float(cfg.get(key) or 0)
+        except (TypeError, ValueError):
+            return 0.0
+        return value if value > 0 else 0.0
+    return num("min_price"), num("max_price")
+
+
+def suppressed(deal, excluded_categories, keywords, prices=(0, 0)):
     """True when a deal should not be shown - or alerted on.
 
     The single place that decides visibility. The listing and the alert path
@@ -150,6 +253,10 @@ def suppressed(deal, excluded_categories, keywords):
     classifying on the spot for rows that predate it.
     """
     if deal.get("hidden"):
+        return True
+    low, high = prices or (0, 0)
+    price = deal.get("price")
+    if isinstance(price, (int, float)) and ((low and price < low) or (high and price > high)):
         return True
     if excluded_categories:
         category = deal.get("category")

@@ -81,6 +81,9 @@ DEFAULTS = {
     # otherwise dominate the Amazon feeds.
     "excluded_categories": ["books"],
     "exclude_keywords": "",
+    # Price range for the list and for alerts. 0 means no bound.
+    "min_price": 0,
+    "max_price": 0,
     # Comma-separated words to watch for. A new deal matching one of these
     # raises its own alert with a distinct sound.
     "watch_keywords": "",

@@ -156,73 +156,102 @@ html[data-mode="light"] {
   color-scheme: light;
 }
 
-/* Sage: the soft, low-contrast look of the reference - a pale green-grey
-   ground, near-white surfaces, hairline borders, and a muted forest green
-   doing the job amber does elsewhere. The accent variables keep their names
-   (--amber and friends) because every rule reads them as "the brand colour";
-   only the values change per theme. Text tones were checked for contrast on
-   this ground, not picked by eye. */
-html[data-theme="sage"] {
-  --panel: rgba(255, 255, 255, .46);
-  --panel-2: rgba(255, 255, 255, .66);
-  --border: rgba(55, 65, 40, .09);
-  --border-strong: rgba(55, 65, 40, .2);
-  --glass-edge: rgba(255, 255, 255, .75);
-  --shadow-soft: 0 1px 2px rgba(40, 50, 25, .04), 0 10px 28px rgba(40, 50, 25, .07);
-  --shadow-lift: 0 2px 4px rgba(40, 50, 25, .05), 0 18px 40px rgba(40, 50, 25, .12);
-  --thumb-ink: rgba(55, 65, 40, .35);
-  --prose: #45483d;
-  --text: #2b2d26;
-  --muted: #65685b;
-  --amber: #4b6440;
-  --amber-deep: #3c5233;
-  --caramel: #5b7050;
-  --honey: #66774a;
-  --cream: #55603f;
-  --amber-text: #44593a;
-  --honey-text: #4f6238;
-  --brand: var(--amber);
-  --ok: #3d6a47;
-  --toast-bg: #f7f8f2;
-  --toast-bg-hover: #fbfbf8;
-  --toast-ink: #2b2d26;
-  --toast-ink-dim: #5a5d51;
-  --toast-kicker: #44593a;
-  --toast-kicker-watch: #87610c;
-  --radius: 20px;
+/* ---------- themes ----------
+   Six complete palettes. Each sets the ground, the cards, the ink, the brand
+   accent (still called --amber in the rules, because every rule reads it as
+   "the brand colour"), the toast, and its own gold and price-error red so the
+   gold glow and the error badge stay distinct from the accent on every one.
+   Glow hues come from the light/dark family (data-mode). :root[...] rather
+   than html[...] so these outrank the generic light-mode gold further down,
+   which has the same specificity as html[...] and would otherwise win by
+   coming later. Text tones were
+   checked for contrast against each ground, not picked by eye. */
+html[data-theme] { --radius: 20px; }
+
+:root[data-theme="cream"] {
+  --bg: #ebe3d6; --bg-raised: #f7f1e7;
+  --panel: rgba(255, 255, 255, .42); --panel-2: rgba(255, 255, 255, .64);
+  --border: rgba(70, 50, 22, .10); --border-strong: rgba(70, 50, 22, .2);
+  --text: #2a241b; --prose: #4a4134; --muted: #685d4d;
+  --amber: #94570f; --amber-deep: #7a470b; --amber-text: #86500e;
+  --caramel: #8a5f33; --honey: #876a30; --honey-text: #74592a; --cream: #6b5334;
+  --ok: #3f6b48; --terracotta: #a8322a;
+  --toast-bg: #fbf7f0; --toast-bg-hover: #fffdf9; --toast-ink: #2a241b;
+  --toast-ink-dim: #5e5445; --toast-kicker: #86500e; --toast-kicker-watch: #8a6512;
+  --gold: 214 150 20; --gold-deep: 186 120 0; --gold-rim: rgba(168, 108, 0, .95);
 }
-html[data-theme="sage"] body {
-  background-image: radial-gradient(1100px 620px at 50% -12%, rgba(255, 255, 255, .55) 0%, transparent 65%);
+:root[data-theme="ledger"] {
+  --bg: #efe7da; --bg-raised: #fcfaf6;
+  --panel: rgba(255, 255, 255, .62); --panel-2: rgba(255, 255, 255, .86);
+  --border: rgba(60, 40, 30, .14); --border-strong: rgba(60, 40, 30, .26);
+  --text: #231d18; --prose: #463c33; --muted: #675b50;
+  --amber: #7d1f1f; --amber-deep: #641818; --amber-text: #7a1e1e;
+  --caramel: #7c3a2c; --honey: #7a5a2a; --honey-text: #6e4f22; --cream: #5f4632;
+  --ok: #2f6646; --terracotta: #b03a12;
+  --toast-bg: #fdfbf7; --toast-bg-hover: #fffefb; --toast-ink: #231d18;
+  --toast-ink-dim: #5e5248; --toast-kicker: #7a1e1e; --toast-kicker-watch: #8a6512;
+  --gold: 226 160 12; --gold-deep: 196 128 0; --gold-rim: rgba(170, 112, 0, .95);
+}
+:root[data-theme="sage"] {
+  --bg: #e3e5d7; --bg-raised: #f1f2e9;
+  --panel: rgba(255, 255, 255, .46); --panel-2: rgba(255, 255, 255, .66);
+  --border: rgba(55, 65, 40, .09); --border-strong: rgba(55, 65, 40, .2);
+  --text: #2b2d26; --prose: #45483d; --muted: #616457;
+  --amber: #46693a; --amber-deep: #375430; --amber-text: #41603a;
+  --caramel: #5b7050; --honey: #66774a; --honey-text: #4f6238; --cream: #55603f;
+  --ok: #3d6a47; --terracotta: #b0442a;
+  --toast-bg: #f7f8f2; --toast-bg-hover: #fbfbf8; --toast-ink: #2b2d26;
+  --toast-ink-dim: #5a5d51; --toast-kicker: #41603a; --toast-kicker-watch: #87610c;
+  --gold: 240 172 12; --gold-deep: 226 138 0; --gold-rim: rgba(176, 116, 0, .95);
+}
+:root[data-theme="terracotta"] {
+  --bg: #ecdbc6; --bg-raised: #f8eee2;
+  --panel: rgba(255, 255, 255, .42); --panel-2: rgba(255, 255, 255, .62);
+  --border: rgba(90, 45, 20, .11); --border-strong: rgba(90, 45, 20, .22);
+  --text: #2c1f17; --prose: #4c3a2e; --muted: #6b5546;
+  --amber: #a3401f; --amber-deep: #86331a; --amber-text: #963a1c;
+  --caramel: #8f4e2c; --honey: #8a6430; --honey-text: #745228; --cream: #6b4934;
+  --ok: #3b6644; --terracotta: #a8183c;
+  --toast-bg: #fcf5ec; --toast-bg-hover: #fffaf4; --toast-ink: #2c1f17;
+  --toast-ink-dim: #634f42; --toast-kicker: #963a1c; --toast-kicker-watch: #86600c;
+  --gold: 218 150 8; --gold-deep: 190 118 0; --gold-rim: rgba(160, 102, 0, .95);
+}
+:root[data-theme="espresso"] {
+  --bg: #16120e; --bg-raised: #231d17;
+  --panel: rgba(255, 255, 255, .045); --panel-2: rgba(255, 255, 255, .075);
+  --border: rgba(255, 238, 215, .09); --border-strong: rgba(255, 238, 215, .18);
+  --text: #f2ebe0; --prose: #d6cbb9; --muted: #aa9e8b;
+  --amber: #e3a63f; --amber-deep: #c48a2a; --amber-text: #f0bd6a;
+  --caramel: #d19a5e; --honey: #e8c68a; --honey-text: #ecd0a0; --cream: #f3e7d4;
+  --ok: #7cc493; --terracotta: #e2694c;
+  --toast-bg: #241e18; --toast-bg-hover: #2c251e; --toast-ink: #f6efe4;
+  --toast-ink-dim: #c4b8a5; --toast-kicker: #f2c27a; --toast-kicker-watch: #f5d58e;
+}
+:root[data-theme="nightfall"] {
+  --bg: #0e1424; --bg-raised: #19223a;
+  --panel: rgba(255, 255, 255, .04); --panel-2: rgba(255, 255, 255, .07);
+  --border: rgba(200, 215, 255, .10); --border-strong: rgba(200, 215, 255, .2);
+  --text: #e9edf6; --prose: #c7cee0; --muted: #9aa4be;
+  --amber: #d8b46a; --amber-deep: #b8954f; --amber-text: #e3c27f;
+  --caramel: #c9a77a; --honey: #dcc79a; --honey-text: #e2cf9f; --cream: #ece2c8;
+  --ok: #7fc7a0; --terracotta: #ef6a6a;
+  --toast-bg: #19223a; --toast-bg-hover: #202a46; --toast-ink: #edf1f8;
+  --toast-ink-dim: #b2bbd2; --toast-kicker: #e3c27f; --toast-kicker-watch: #f2d58a;
+  /* Gold is the accent here, so the watched glow goes warmer and brighter
+     than the buttons to stay its own signal. */
+  --gold: 255 196 70; --gold-deep: 245 160 30; --gold-rim: rgba(255, 206, 110, .95);
 }
 
-/* Moss: Sage's dark counterpart, so the light/dark toggle stays in one family. */
-html[data-theme="moss"] {
-  --panel: rgba(255, 255, 255, .045);
-  --panel-2: rgba(255, 255, 255, .075);
-  --border: rgba(225, 235, 210, .09);
-  --border-strong: rgba(225, 235, 210, .18);
-  --prose: #c9cdbd;
-  --text: #eceee4;
-  --muted: #a3a796;
-  --amber: #9db885;
-  --amber-deep: #7f9a69;
-  --caramel: #a9b98f;
-  --honey: #c3cfa2;
-  --cream: #dfe6cd;
-  --amber-text: #adc497;
-  --honey-text: #c6d2a8;
-  --brand: var(--amber);
-  --ok: #8fc79c;
-  --toast-bg: #252923;
-  --toast-bg-hover: #2c3129;
-  --toast-ink: #eef0e6;
-  --toast-ink-dim: #b4b8a8;
-  --toast-kicker: #b6cc9f;
-  --radius: 20px;
+/* A soft light from the top on every theme, in its own accent family. */
+body { background-image: radial-gradient(1200px 640px at 50% -14%, rgba(255, 255, 255, .5) 0%, transparent 65%); }
+html[data-mode="dark"] body {
+  background-image: radial-gradient(1200px 640px at 50% -14%, color-mix(in srgb, var(--amber) 9%, transparent) 0%, transparent 65%);
 }
-html[data-theme="moss"] body {
-  background-image: radial-gradient(1100px 620px at 50% -12%, rgba(157, 184, 133, .07) 0%, transparent 65%);
-}
+html[data-mode="dark"] .logo,
+html[data-mode="dark"] .btn.primary,
+html[data-mode="dark"] .quicklink,
+html[data-mode="dark"] .segbtn.on,
+html[data-mode="dark"] .updatepill { color: #17130e; }
 
 * { box-sizing: border-box; }
 
@@ -406,9 +435,9 @@ a.linkbtn { text-decoration: none; display: inline-flex; align-items: center; }
    One centred column with generous margins, the way the reference keeps
    everything in a single calm reading line. */
 .page {
-  max-width: 1240px;
+  max-width: 1760px;
   margin: 0 auto;
-  padding: 26px 32px 110px;
+  padding: 24px 36px 110px;
 }
 
 .pagehead {
@@ -567,157 +596,332 @@ body.searching .searchbox { width: 330px; border-color: var(--brand); }
   .controls { justify-content: flex-start; }
 }
 
-/* ---------- settings view ---------- */
+/* ---------- settings ----------
+   A sidebar of sections and one section at a time on the right, each setting a
+   single row - name and a one-line hint on the left, the control on the right -
+   so the page is a short list instead of a wall of cards. */
 .settingsview {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
-  gap: 20px;
-  padding: 0;
+  grid-template-columns: 200px minmax(0, 760px);
+  gap: 28px;
+  justify-content: center;
   align-items: start;
 }
+.setnav {
+  position: sticky;
+  top: 76px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.setnavbtn {
+  text-align: left;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 9px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background .2s var(--ease), color .2s var(--ease);
+}
+.setnavbtn:hover { color: var(--text); background: var(--panel); }
+.setnavbtn.on { color: var(--text); background: var(--bg-raised); box-shadow: var(--shadow-soft); }
 
-.setcard {
-  background: var(--panel);
+.setsec {
+  background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px 22px 22px;
-  backdrop-filter: saturate(180%) blur(var(--glass-blur));
-  -webkit-backdrop-filter: saturate(180%) blur(var(--glass-blur));
-  box-shadow: var(--shadow-soft), inset 0 1px 0 var(--glass-edge);
-  animation: panelIn .4s var(--ease-out) both;
+  padding: 6px 22px 10px;
+  box-shadow: var(--shadow-soft);
+  animation: panelIn .3s var(--ease-out) both;
 }
-
-.setcard h3 {
-  margin: 0 0 16px;
+.setsec h3 {
+  margin: 14px 0 4px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--muted);
 }
-
-.setrow { margin-bottom: 16px; }
-.setlabel { display: block; font-size: 13px; margin-bottom: 8px; }
-.setnote { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-.sethint { margin: 12px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.55; }
-
-/* One sentence under a heading explaining what the group is for. Reads as
-   prose rather than a hint, so it is a shade brighter than .sethint and sits
-   directly beneath the h3 with no rule between them. */
-.setintro {
-  margin: -4px 0 18px;
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: var(--prose);
-  max-width: 62ch;
-}
-.setintro em { font-style: normal; color: var(--amber-text); }
-.setinline { margin-top: 4px; }
-
-.rangerow { display: flex; align-items: center; gap: 12px; }
-.rangerow input[type=range] { flex: 1; accent-color: var(--brand); }
-.rangerow output {
-  min-width: 46px;
-  text-align: right;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-.swatches { display: flex; gap: 10px; flex-wrap: wrap; }
-
-.swatch {
-  width: 42px; height: 42px;
-  border-radius: 11px;
-  border: 2px solid var(--border);
-  cursor: pointer;
-  padding: 0;
-  position: relative;
-  transition: transform .3s var(--spring), border-color .25s var(--ease);
-}
-.swatch:hover { transform: translateY(-2px); border-color: var(--border-strong); }
-.swatch.on { border-color: var(--brand); }
-.swatch.on::after {
-  content: "✓";
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 15px;
-  color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, .8);
-}
-
-/* ---------- hide products panel ---------- */
-.hidepanel {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 26px;
-  margin: 0 32px;
-  padding: 22px 24px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--panel);
-  animation: panelIn .45s var(--ease-out) both;
-}
-
 @keyframes panelIn {
-  from { opacity: 0; transform: translateY(-10px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
 }
 
-.hidepanel h3 {
-  margin: 0 0 12px;
+.srow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 13px 0;
+  border-top: 1px solid var(--border);
+}
+.setsec h3 + .srow { border-top: none; }
+.srow.block { display: block; }
+.srow.block .slabel { margin-bottom: 10px; }
+.srow.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.srow.two .slabel { margin-bottom: 8px; }
+.slabel {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+  min-width: 0;
+}
+.slabel span {
+  display: block;
+  margin-top: 2px;
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
+  font-weight: 400;
   color: var(--muted);
 }
+.sctl { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.sctl select {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.versionline { font-size: 12.5px; color: var(--muted); font-weight: 400; }
+.versionline a { color: var(--amber-text); }
 
-.catlist { display: flex; flex-wrap: wrap; gap: 9px; }
+.rangerow { display: flex; align-items: center; gap: 12px; width: 260px; }
+.rangerow input[type=range] { flex: 1; accent-color: var(--brand); }
+.rangerow output {
+  min-width: 40px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 
-/* Selectable pills rather than raw checkboxes. */
+/* A switch, drawn from the checkbox itself so every existing listener and
+   label still works. */
+input.switch {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 38px; height: 22px;
+  margin: 0;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+  cursor: pointer;
+  transition: background .25s var(--ease);
+}
+input.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+  transition: transform .3s var(--spring);
+}
+input.switch:checked { background: var(--brand); }
+input.switch:checked::after { transform: translateX(16px); }
+input.switch:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+.catlist { display: flex; flex-wrap: wrap; gap: 7px; }
 .catpill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 14px;
-  border-radius: 980px;
+  gap: 6px;
+  padding: 6px 13px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--panel-2);
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12.5px;
   cursor: pointer;
   user-select: none;
-  transition: transform .35s var(--spring), background .25s var(--ease),
-              color .25s var(--ease), border-color .25s var(--ease);
+  transition: background .2s var(--ease), color .2s var(--ease), border-color .2s var(--ease);
 }
-.catpill:hover { transform: translateY(-1px); border-color: var(--border-strong); }
-.catpill:active { transform: scale(.96); }
+.catpill:hover { border-color: var(--border-strong); color: var(--text); }
 .catpill input { display: none; }
 .catpill.on {
-  background: rgba(255, 122, 24, .16);
-  border-color: rgba(255, 122, 24, .5);
-  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  border-color: color-mix(in srgb, var(--brand) 45%, transparent);
+  color: var(--amber-text);
 }
-.catpill .tick { opacity: 0; transition: opacity .2s var(--ease); font-size: 11px; }
-.catpill.on .tick { opacity: 1; }
+.catpill .tick { display: none; font-size: 11px; }
+.catpill.on .tick { display: inline; }
 
 .kwinput {
   width: 100%;
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 11px;
+  border-radius: 12px;
   color: var(--text);
-  padding: 10px 13px;
-  font-size: 13.5px;
+  padding: 9px 12px;
+  font-size: 13px;
   font-family: inherit;
-  transition: border-color .25s var(--ease), background .25s var(--ease);
+  transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
 }
 .kwinput:focus {
   outline: none;
-  border-color: rgba(255, 122, 24, .6);
-  background: rgba(255, 255, 255, .09);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent);
+}
+
+/* ---------- popovers ---------- */
+.popwrap { position: relative; }
+.popover {
+  position: absolute;
+  z-index: 70;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: 0 2px 6px rgba(20, 25, 10, .06), 0 24px 60px rgba(20, 25, 10, .18);
+  animation: panelIn .22s var(--ease-out) both;
+}
+.popover h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.filterpop { top: calc(100% + 8px); right: 0; width: 380px; padding: 16px 18px 6px; }
+.pophead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.linkish {
+  border: none; background: none; padding: 0;
+  font: inherit; font-size: 12.5px; color: var(--amber-text); cursor: pointer;
+}
+.linkish:hover { text-decoration: underline; }
+.popsec { padding: 12px 0; border-top: 1px solid var(--border); }
+.pophead + .popsec { border-top: none; }
+.poplabel { display: block; margin-bottom: 9px; font-size: 13px; font-weight: 500; color: var(--text); }
+.poplabel span { margin-left: 6px; font-size: 11.5px; font-weight: 400; color: var(--muted); }
+.poprow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.poprow .poplabel { margin: 0; }
+.poprow select {
+  height: 32px; padding: 0 12px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border); background: var(--panel-2);
+  color: var(--text); font: inherit; font-size: 13px;
+}
+.pricerange { display: flex; align-items: center; gap: 8px; }
+.pricerange .dash { color: var(--muted); }
+.moneyin {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 13px;
+}
+.moneyin:focus-within { border-color: var(--brand); }
+.moneyin input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+.chipcount {
+  min-width: 18px; height: 18px;
+  display: inline-grid; place-items: center;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: #fdf6ea;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+html[data-mode="dark"] .chipcount { color: #17130e; }
+#filterbtn.active { border-color: color-mix(in srgb, var(--brand) 45%, transparent); }
+
+/* The theme panel rises from the sun button, as in the reference. */
+.themepop {
+  position: fixed;
+  left: 18px;
+  bottom: 112px;
+  width: 400px;
+  padding: 18px;
+}
+.themepop h4 { margin-bottom: 14px; }
+.themegrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.themegrid.wide { grid-template-columns: repeat(3, 1fr); }
+.themetile {
+  display: block;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .2s var(--ease), transform .3s var(--spring), box-shadow .2s var(--ease);
+}
+.themetile:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+.themetile.on {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 1px var(--brand), var(--shadow-soft);
+}
+.tilepreview {
+  position: relative;
+  height: 74px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.tilecard {
+  position: absolute;
+  left: 14px; right: 30px; top: 14px;
+  height: 36px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(128, 128, 128, .18);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.tileline { display: block; height: 4px; width: 46%; border-radius: 3px; background: currentColor; opacity: .55; }
+.tileline.long { width: 64%; opacity: .9; }
+.tilepill {
+  position: absolute;
+  left: 22px; bottom: 9px;
+  width: 30px; height: 9px;
+  border-radius: 6px;
+}
+.tiledot {
+  position: absolute;
+  right: 12px; top: 13px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+.tilefoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 6px 3px;
+}
+.tilename { font-size: 13.5px; font-weight: 600; }
+.tilecheck { color: var(--amber-text); font-weight: 700; opacity: 0; }
+.themetile.on .tilecheck { opacity: 1; }
+
+@media (max-width: 860px) {
+  .settingsview { grid-template-columns: 1fr; }
+  .setnav { position: static; flex-direction: row; flex-wrap: wrap; }
+  .srow { flex-wrap: wrap; }
+  .rangerow { width: 100%; }
+  .themegrid.wide { grid-template-columns: repeat(2, 1fr); }
+  .filterpop { right: auto; left: 0; width: min(380px, calc(100vw - 40px)); }
 }
 
 /* The pinned list is one entry per line, so it needs to be a textarea while
@@ -1010,6 +1214,12 @@ html[data-mode="light"] .segbtn.on { color: #fdf6ea; }
 
 body.modal-open { overflow: hidden; }
 
+@media (min-width: 1900px) { .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-width: 1180px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 940px)  { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px)  { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px)  { .grid { grid-template-columns: 1fr; } }
+
 /* ---------- notifications ----------
    Independent cards stacked in the corner, newest on top. Each opens, finds
    or dismisses on its own; the header carries the count and Clear all. The
@@ -1190,7 +1400,9 @@ html[data-mode="light"] .reasonchip.score   { background: rgba(176, 68, 42, .10)
 /* ---------- grid ---------- */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  /* At least five across on a desktop window; fewer only when the window is
+     genuinely narrow. Set below by width. */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 20px;
   padding: 0;
   /* stretch, not start: every card in a row is the height of the tallest, so
@@ -1299,7 +1511,7 @@ html[data-mode="light"] .reasonchip.score   { background: rgba(176, 68, 42, .10)
   /* Muted until a real image arrives, so a missing thumbnail is never a
      glaring rectangle. .hasimg switches it to the photo backdrop. */
   background: var(--panel-2);
-  height: 172px;
+  height: 150px;
   overflow: hidden;
   /* Rounds itself now that the card no longer clips its children. */
   border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;

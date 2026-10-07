@@ -719,17 +719,52 @@ that search for you. Esc or × clears it.
 
 ## Look and feel
 
-A calm, centred layout: the section tabs as pills in the middle of the top bar,
-one centred column for the content, and every list control - search, minimum
-discount, sort, export - as the same soft pill beside the page title. Settings
-and a light/dark toggle sit as small round buttons in the bottom-left corner.
-Controls you set once - check interval, chime threshold, sound, screen glow -
-live in Settings rather than in the toolbar.
+A calm, wide layout: the section tabs as pills in the middle of the top bar, and
+the deals in a grid of **at least five across** on a desktop window (six on very
+wide screens; fewer only when the window is genuinely narrow). Search, minimum
+discount, sort, **Filters** and export sit as soft pills beside the page title.
 
-**Sage** is the default theme: a pale green-grey ground, near-white cards and a
-muted forest-green accent, with **Moss** as its dark counterpart. The toggle
-flips between whichever light and dark themes you last used. Small grey text
-measures 4.6:1 against the Sage ground, above the 4.5:1 accessibility minimum.
+### Themes
+
+Six complete themes - **Cream, Ledger, Sage, Terracotta, Espresso, Nightfall** -
+chosen from the sun button in the bottom-left corner or under Settings ->
+Appearance, each shown as a miniature of itself. A theme is a whole palette, not
+just a background: ground, cards, ink, accent, and its own gold and price-error
+red, so the gold "watched" glow and the error badge stay distinct from the
+accent on every one (on Nightfall, where the accent is already gold, the watched
+glow runs warmer and brighter). Every theme was measured against the 4.5:1
+contrast minimum for small text; the lowest is 4.74:1. Themes from earlier
+versions map to their nearest replacement.
+
+### Filters
+
+**Filters** opens a panel to exclude things from the list:
+
+- **Product types** - sixteen of them, from books and baby goods to video games,
+  home & kitchen, and cashback or sign-up "offers". The rules are deliberately
+  narrow: anything that could plausibly be electronics is left unclassified, so
+  it can never be hidden by accident. Rule changes reclassify every stored deal
+  once, not only new ones.
+- **Price range** - a minimum and maximum price.
+- **Hide titles containing** - comma-separated words.
+- **Hide deals older than** - the age limit.
+
+Product types and the price range also silence alerts: a deal you have filtered
+out never rings. The button shows how many filters are active, and **Reset**
+clears them.
+
+### Settings
+
+A sidebar of sections - Appearance, Alerts, Watching, Sources, Notifications,
+App & updates - showing one at a time, each setting a single row with a one-line
+hint and its control on the right.
+
+### Window size and position
+
+The desktop app reopens exactly where you left it, the same size, and maximised
+if it was. A minimised window is never saved (Windows parks it at -32000), a
+maximised one keeps your normal size underneath, and a saved position that is
+no longer on any monitor - one you have unplugged, say - falls back to centred.
 
 ## Promo codes
 

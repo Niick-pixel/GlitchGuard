@@ -37,46 +37,77 @@ let GLOW_DISCOUNT = 50;
 
 /* mode drives the light/dark variable block in the stylesheet; bg/raised are
    the two surfaces each theme paints on top of it. */
-/* Warm grounds only. The previous set was blue-grey, which fought the amber
-   accents no matter how the accents were tuned - a cool background makes a
-   warm accent look like an error rather than a choice. */
+/* Six complete themes. Each is a whole palette - ground, cards, ink, accent,
+   and the glow and gold tuned to sit on that ground - defined in app.css under
+   html[data-theme]. These entries only drive the preview tiles and say which
+   glow family (light or dark) a theme uses. */
 const BG_THEMES = {
-  // Soft sage with a forest-green accent: the calm, low-contrast look of the
-  // reference design. The default for new installs.
-  sage:     { label: "Sage",     mode: "light", bg: "#e6e8dc", raised: "#f2f3ec" },
-  // Its dark counterpart, so the light/dark toggle stays in the same family.
-  moss:     { label: "Moss",     mode: "dark",  bg: "#1c1f1a", raised: "#262a23" },
-  espresso: { label: "Espresso", mode: "dark",  bg: "#211d18", raised: "#2c2720" },
-  walnut:   { label: "Walnut",   mode: "dark",  bg: "#26201a", raised: "#332b22" },
-  umber:    { label: "Umber",    mode: "dark",  bg: "#1b1713", raised: "#25201a" },
-  clay:     { label: "Clay",     mode: "dark",  bg: "#2a231e", raised: "#372e27" },
-  graphite: { label: "Graphite", mode: "dark",  bg: "#232120", raised: "#2f2c2a" },
-  cream:    { label: "Cream",    mode: "light", bg: "#f7f1e6", raised: "#fffdf8" },
-  linen:    { label: "Linen",    mode: "light", bg: "#f3ebdd", raised: "#fdf8ef" },
-  sand:     { label: "Sand",     mode: "light", bg: "#efe6d5", raised: "#fbf5ea" },
+  cream:      { label: "Cream",      mode: "light", bg: "#ebe3d6", card: "#f7f1e7", line: "#3a3127", accent: "#9a5b12" },
+  ledger:     { label: "Ledger",     mode: "light", bg: "#efe7da", card: "#fcfaf6", line: "#2e2620", accent: "#7d1f1f" },
+  sage:       { label: "Sage",       mode: "light", bg: "#e3e5d7", card: "#f1f2e9", line: "#30332a", accent: "#46693a" },
+  terracotta: { label: "Terracotta", mode: "light", bg: "#ecdbc6", card: "#f8eee2", line: "#3a2a1f", accent: "#a3401f" },
+  espresso:   { label: "Espresso",   mode: "dark",  bg: "#16120e", card: "#231d17", line: "#e8dfd2", accent: "#e3a63f" },
+  nightfall:  { label: "Nightfall",  mode: "dark",  bg: "#0e1424", card: "#19223a", line: "#dfe5f2", accent: "#d8b46a" },
+};
+// Themes from earlier versions map to their nearest replacement.
+const LEGACY_THEMES = {
+  moss: "espresso", walnut: "espresso", umber: "espresso", clay: "espresso",
+  graphite: "espresso", linen: "cream", sand: "cream",
 };
 
+function themeKey(name) {
+  const key = LEGACY_THEMES[name] || name;
+  return key in BG_THEMES ? key : "sage";
+}
+
 function applyTheme(name) {
-  const t = BG_THEMES[name] || BG_THEMES.sage;
+  const key = themeKey(name);
   const root = document.documentElement;
-  // Themes can carry their own accent family (see html[data-theme] in CSS).
-  root.dataset.theme = name in BG_THEMES ? name : "sage";
-  root.style.setProperty("--bg", t.bg);
-  root.style.setProperty("--bg-raised", t.raised);
-  root.dataset.mode = t.mode;
-  // The page washes are tuned for a dark ground and turn to mud on a light
-  // one, so they are dialled back rather than removed.
-  root.style.setProperty("--wash-a", t.mode === "light" ? ".10" : ".10");
-  root.style.setProperty("--wash-b", t.mode === "light" ? ".09" : ".09");
-  document.querySelectorAll(".swatch").forEach((s) =>
-    s.classList.toggle("on", s.dataset.theme === name)
-  );
-  // Switching between a dark and a light theme swaps the glow palette, and the
-  // overlay holds its own copy of it, so it has to be told.
+  root.dataset.theme = key;
+  root.dataset.mode = BG_THEMES[key].mode;
+  // Older versions set these inline, which would outrank the theme's CSS.
+  ["--bg", "--bg-raised", "--wash-a", "--wash-b"].forEach((v) => root.style.removeProperty(v));
+  document.querySelectorAll(".themetile").forEach((tile) =>
+    tile.classList.toggle("on", tile.dataset.theme === key));
+  // The glow palette is per theme, and the screen-edge overlay keeps its own
+  // copy of it, so it has to be told.
   if (screenGlow && typeof screenGlowStops === "function") {
     const stops = screenGlowStops();
     if (stops) screenGlow.set("stops", stops);
   }
+}
+
+/* A tile is a miniature of the theme: its ground, a card with two lines of
+   text, the accent as a button and a dot - so the choice is made by looking,
+   not by reading names. */
+function buildThemeTiles(box) {
+  box.replaceChildren();
+  Object.entries(BG_THEMES).forEach(([key, th]) => {
+    const tile = el("button", "themetile");
+    tile.type = "button";
+    tile.dataset.theme = key;
+    tile.setAttribute("aria-label", `${th.label} theme`);
+    const preview = el("div", "tilepreview");
+    preview.style.background = th.bg;
+    const card = el("div", "tilecard");
+    card.style.background = th.card;
+    card.style.color = th.line;
+    card.append(el("span", "tileline long"), el("span", "tileline"));
+    const pill = el("span", "tilepill");
+    pill.style.background = th.accent;
+    const dot = el("span", "tiledot");
+    dot.style.background = th.accent;
+    preview.append(card, pill, dot);
+    const foot = el("div", "tilefoot");
+    foot.append(el("span", "tilename", th.label), el("span", "tilecheck", "\u2713"));
+    tile.append(preview, foot);
+    tile.addEventListener("click", () => {
+      applyTheme(key);
+      saveSettings();
+    });
+    box.append(tile);
+  });
+  applyTheme(document.documentElement.dataset.theme || "sage");
 }
 
 /* ---------- card glow ----------
@@ -1191,6 +1222,8 @@ function applySettings(cfg) {
     $("livecheck").checked = !!cfg.amazon_live_check;
     $("interval").value = String(cfg.poll_interval);
     $("keywords").value = cfg.exclude_keywords || "";
+    $("minprice").value = Number(cfg.min_price) > 0 ? String(cfg.min_price) : "";
+    $("maxprice").value = Number(cfg.max_price) > 0 ? String(cfg.max_price) : "";
     $("sounddiscount").value = String(cfg.sound_discount || 0);
     $("screenglow").checked = cfg.screen_glow !== false;
     $("cardglow").value = String(cfg.card_glow_discount ?? 50);
@@ -1241,6 +1274,7 @@ function renderCategories(list, excluded) {
     input.value = cat.key;
     input.addEventListener("change", () => {
       pill.classList.toggle("on", input.checked);
+      updateFilterCount();
       saveSettings();
       load();
     });
@@ -1283,21 +1317,8 @@ function buildSettings(cfg) {
   if (settingsBuilt) return;
   settingsBuilt = true;
 
-  const swatches = $("themes");
-  Object.keys(BG_THEMES).forEach((key) => {
-    const t = BG_THEMES[key];
-    const b = document.createElement("button");
-    b.className = "swatch";
-    b.dataset.theme = key;
-    b.title = t.label;
-    b.setAttribute("aria-label", t.label);
-    b.style.background = `linear-gradient(140deg, ${t.raised}, ${t.bg})`;
-    b.addEventListener("click", () => {
-      applyTheme(key);
-      saveSettings();
-    });
-    swatches.append(b);
-  });
+  buildThemeTiles($("themes"));
+  buildThemeTiles($("themepopgrid"));
 
   const alertList = $("alertsources");
   const allowed = Array.isArray(cfg.alert_sources) ? cfg.alert_sources : null;
@@ -1484,6 +1505,7 @@ async function load() {
     const data = await api(`/api/deals?${params}`);
     renderCategories(data.categories, data.settings.excluded_categories);
     applySettings(data.settings);
+    updateFilterCount();
     // Must follow applySettings: its first call is what builds the source
     // pills these figures are written into.
     renderSourceLatency(data.source_latency);
@@ -1528,6 +1550,8 @@ function setView(next) {
   );
   $("pagetitle").textContent = VIEW_TITLES[next] || "Deals";
   $("settingsfab").classList.toggle("active", isSettings);
+  $("counts").classList.toggle("hidden", isSettings);
+  closePopovers();
   if (!isSettings && searchQuery) clearSearch(false);
   openId = null;
   // The reason chip is baked into the card at build time and only appears in
@@ -1540,22 +1564,78 @@ document.querySelectorAll(".tab").forEach((t) =>
   t.addEventListener("click", () => setView(t.dataset.view))
 );
 
-/* Bottom-left: light/dark and Settings. The toggle remembers which theme of
-   each kind you last used, so it flips between your two choices rather than
-   a fixed pair. */
-const THEME_PAIR_KEY = "gg.themepair.v1";
-$("themetoggle").addEventListener("click", () => {
-  const current = document.querySelector(".swatch.on")?.dataset.theme || settings.bg_theme || "sage";
-  const mode = (BG_THEMES[current] || {}).mode || "dark";
-  let pair = {};
-  try { pair = JSON.parse(localStorage.getItem(THEME_PAIR_KEY) || "{}"); } catch {}
-  pair[mode] = current;
-  const want = mode === "light" ? "dark" : "light";
-  const next = pair[want] || (want === "light" ? "sage" : "moss");
-  try { localStorage.setItem(THEME_PAIR_KEY, JSON.stringify(pair)); } catch {}
-  applyTheme(next);
-  saveSettings();
+/* ---------- popovers ----------
+   One open at a time; a click outside or Esc closes it. */
+function closePopovers(except) {
+  [["themepop", "themetoggle"], ["filterpop", "filterbtn"]].forEach(([pop, btn]) => {
+    if (pop === except) return;
+    $(pop).classList.add("hidden");
+    $(btn).setAttribute("aria-expanded", "false");
+  });
+}
+function togglePopover(pop, btn) {
+  const opening = $(pop).classList.contains("hidden");
+  closePopovers(pop);
+  $(pop).classList.toggle("hidden", !opening);
+  $(btn).setAttribute("aria-expanded", String(opening));
+}
+$("themetoggle").addEventListener("click", (event) => {
+  event.stopPropagation();
+  togglePopover("themepop", "themetoggle");
 });
+$("filterbtn").addEventListener("click", (event) => {
+  event.stopPropagation();
+  togglePopover("filterpop", "filterbtn");
+});
+["themepop", "filterpop"].forEach((id) =>
+  $(id).addEventListener("click", (event) => event.stopPropagation()));
+document.addEventListener("click", () => closePopovers());
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closePopovers();
+});
+
+/* ---------- filters ---------- */
+function updateFilterCount() {
+  let n = selectedCategories().length;
+  if (Number($("minprice").value) > 0) n++;
+  if (Number($("maxprice").value) > 0) n++;
+  if (($("keywords").value || "").trim()) n++;
+  $("filtercount").textContent = String(n);
+  $("filtercount").classList.toggle("hidden", n === 0);
+  $("filterbtn").classList.toggle("active", n > 0);
+}
+
+let priceTimer = null;
+["minprice", "maxprice"].forEach((id) =>
+  $(id).addEventListener("input", () => {
+    clearTimeout(priceTimer);
+    priceTimer = setTimeout(() => {
+      updateFilterCount();
+      saveSettings().then(load);
+    }, 450);
+  }));
+
+$("filterreset").addEventListener("click", () => {
+  document.querySelectorAll("#categories input:checked").forEach((input) => {
+    input.checked = false;
+    input.closest(".catpill")?.classList.remove("on");
+  });
+  $("minprice").value = "";
+  $("maxprice").value = "";
+  $("keywords").value = "";
+  updateFilterCount();
+  saveSettings().then(load);
+});
+
+/* ---------- settings sections ---------- */
+document.querySelectorAll(".setnavbtn").forEach((btn) =>
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".setnavbtn").forEach((b) =>
+      b.classList.toggle("on", b === btn));
+    document.querySelectorAll(".setsec").forEach((sec) =>
+      sec.classList.toggle("hidden", sec.dataset.sec !== btn.dataset.sec));
+  }));
+
 $("settingsfab").addEventListener("click", () =>
   setView(view === "settings" ? (dataSection || "feed") : "settings"));
 
@@ -1741,6 +1821,8 @@ function saveSettings() {
     screen_glow: $("screenglow").checked,
     excluded_categories: selectedCategories(),
     exclude_keywords: $("keywords").value,
+    min_price: Number($("minprice").value) || 0,
+    max_price: Number($("maxprice").value) || 0,
     watch_keywords: $("watchwords").value,
     watchlist: $("watchlist").value,
     discord_webhook: $("discordhook").value.trim(),
@@ -1748,7 +1830,7 @@ function saveSettings() {
     telegram_chat_id: $("tgchat").value.trim(),
     deal_ttl_hours: Number($("dealttl").value),
     alert_max_age_minutes: Number($("alertage").value),
-    bg_theme: document.querySelector(".swatch.on")?.dataset.theme || "sage",
+    bg_theme: document.documentElement.dataset.theme || "sage",
     card_glow: $("cardglowon").checked,
     card_glow_discount: Number($("cardglow").value),
     glow_strength: Number($("glowstrength").value),
@@ -1811,6 +1893,7 @@ $("keywords").addEventListener("input", () => {
   clearTimeout(kwTimer);
   // Debounced so a filter is not run on every keystroke.
   kwTimer = setTimeout(() => {
+    updateFilterCount();
     saveSettings();
     load();
   }, 450);
