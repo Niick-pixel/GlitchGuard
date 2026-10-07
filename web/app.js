@@ -175,6 +175,16 @@ function screenGlowStops() {
   return stops;
 }
 
+/* Card glass. The frost class adds the backdrop blur only below 100%, so a
+   solid card costs nothing extra. */
+function applyCardOpacity(value, frost = settings.card_frost) {
+  const v = Math.max(40, Math.min(100, Number(value) || 85));
+  document.documentElement.style.setProperty("--card-opacity", String(v / 100));
+  // The blur is opt-in: it roughly doubles idle CPU in measurement, and a
+  // solid card has nothing behind it worth blurring.
+  document.documentElement.classList.toggle("frost", v < 100 && !!frost);
+}
+
 function applyGlow(cfg) {
   const root = document.documentElement;
   const style = cfg.glow_style === "solid" ? "solid" : GLOW_STYLE_DEFAULT;
@@ -1229,6 +1239,10 @@ function applySettings(cfg) {
     $("cardglow").value = String(cfg.card_glow_discount ?? 50);
     $("o-cardglow").textContent = `${cfg.card_glow_discount ?? 50}%`;
     $("cardglowon").checked = cfg.card_glow !== false;
+    $("cardopacity").value = String(cfg.card_opacity ?? 85);
+    $("o-cardopacity").textContent = `${cfg.card_opacity ?? 85}%`;
+    $("cardfrost").checked = !!cfg.card_frost;
+    applyCardOpacity(cfg.card_opacity ?? 85, !!cfg.card_frost);
     $("glowstrength").value = String(cfg.glow_strength ?? 70);
     $("o-glowstrength").textContent = String(cfg.glow_strength ?? 70);
     $("glowcolor").value = cfg.glow_color || "#e9a23c";
@@ -1366,6 +1380,13 @@ function buildSettings(cfg) {
 
   // Strength is pure CSS variables, so the cards never need rebuilding - the
   // slider moves the light in place.
+  bindRange("cardopacity", (v) => `${v}%`, (v) => applyCardOpacity(v, $("cardfrost").checked));
+  $("cardfrost").addEventListener("change", () => {
+    settings.card_frost = $("cardfrost").checked;
+    applyCardOpacity($("cardopacity").value, settings.card_frost);
+    saveSettings();
+  });
+
   bindRange("glowstrength", (v) => String(v), (v) => {
     settings.glow_strength = v;
     applyGlow(settings);
@@ -1834,6 +1855,8 @@ function saveSettings() {
     card_glow: $("cardglowon").checked,
     card_glow_discount: Number($("cardglow").value),
     glow_strength: Number($("glowstrength").value),
+    card_opacity: Number($("cardopacity").value),
+    card_frost: $("cardfrost").checked,
     screen_glow_intensity: Number($("screenglowint").value),
     glow_style: document.querySelector("#glowstyle .segbtn.on")?.dataset.style || "rainbow",
     glow_color: $("glowcolor").value,

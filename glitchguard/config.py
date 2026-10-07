@@ -54,6 +54,13 @@ DEFAULTS = {
     # 0-100. Drives alpha, offset and blur together - turning one up without
     # the others just makes a harder edge, not a brighter light.
     "glow_strength": 70,
+    # Card surface opacity, 40-100. Below 100 the cards turn to frosted glass
+    # and the glow beneath shows faintly through; 100 is solid and cheapest.
+    "card_opacity": 85,
+    # A real backdrop blur behind the glass. Off by default: measured at about
+    # twice the idle CPU of plain translucent glass, for a difference that is
+    # hard to see - the glows beneath are already soft.
+    "card_frost": False,
     # Screen-edge glow intensity, 0-100. Separate from card strength because
     # the two are read at different distances: an edge effect filling the whole
     # window is overbearing long before a halo round a card is.

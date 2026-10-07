@@ -736,6 +736,20 @@ glow runs warmer and brighter). Every theme was measured against the 4.5:1
 contrast minimum for small text; the lowest is 4.74:1. Themes from earlier
 versions map to their nearest replacement.
 
+### Glass cards
+
+Cards are slightly translucent, like a sheet of glass with a soft sheen and a lit
+top edge, and the glows sit **behind** every card instead of washing over the
+front. A glowing deal's halo shows faintly through its neighbours. **Card
+opacity** under Appearance sets the amount, from 40% (very glassy) to 100%
+(solid); the default is 85%.
+
+**Frosted blur** is an opt-in switch that adds a real backdrop blur behind the
+glass. It is off by default because it costs a lot. Measured in a headless
+browser, idle CPU went from about 46-49% of one core with plain glass to 121-152%
+with the blur, and the difference is hard to see because the glows are already
+soft. Low-power mode always turns the blur off.
+
 ### Filters
 
 **Filters** opens a panel to exclude things from the list:

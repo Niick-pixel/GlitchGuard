@@ -291,7 +291,7 @@ body {
   transition: opacity .62s var(--ease-out), transform .62s var(--ease-out);
   will-change: opacity, transform;
 }
-.reveal.in-view { opacity: 1; transform: none; }
+.reveal.in-view { opacity: 1; transform: none; will-change: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -955,6 +955,40 @@ html[data-mode="light"] .updatepill { color: #fdf6ea; }
   font-weight: 700;
 }
 
+/* ---------- card glass ----------
+   A translucent fill with a soft top-left sheen and a lit top edge - frosted
+   glass, nudging towards Apple's liquid glass - set by the Card opacity
+   slider. At 100% it is a solid card with no blur at all, which is also the
+   cheapest to draw. Halos from this card and its neighbours sit beneath it
+   (z-index -1 in the grid) and show faintly through.
+   The real backdrop blur (html.frost) is opt-in. Measured in a headless
+   browser it took idle CPU from about 49% to 121-152% of a core - every
+   blurred card is a layer the compositor keeps redoing - while the glows it
+   would soften are already soft. Plain translucency with the sheen and the
+   lit edge gives most of the look for none of the cost. */
+:root { --card-opacity: .85; --card-blur: 14px; --card-fill-boost: 0; }
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--bg-raised)
+    calc(min(1, var(--card-opacity) + var(--card-fill-boost)) * 100%), transparent);
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, .34) 0%, rgba(255, 255, 255, 0) 42%);
+  box-shadow: inset 0 1px 0 var(--glass-edge), inset 0 0 0 1px rgba(255, 255, 255, .06);
+  transition: background-color .3s var(--ease);
+}
+html[data-mode="dark"] .card::after {
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, .07) 0%, rgba(255, 255, 255, 0) 42%);
+}
+html.frost .card::after {
+  backdrop-filter: blur(var(--card-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--card-blur)) saturate(150%);
+}
+html.lowpower .card::after { backdrop-filter: none; -webkit-backdrop-filter: none; }
+
 /* ---------- watched deals: gold ----------
    A keyword match or a pinned product. It replaces the rainbow rather than
    joining it: two kinds of glow on one card would say nothing, and something
@@ -987,6 +1021,7 @@ html[data-mode="light"] {
 .card.watched::before {
   content: "";
   position: absolute;
+  z-index: -1;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
@@ -1015,19 +1050,6 @@ html[data-mode="light"] .card.watched::before {
 
 /* The light reaches the front of the card too, from the top edge, the way
    the rainbow glow lights its corners. Under the content, never over it. */
-.card.watched::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: .16;
-  mix-blend-mode: var(--glow-front-blend);
-  background:
-    radial-gradient(90% 55% at 50% 0%, rgb(var(--gold)) 0%, transparent 70%),
-    radial-gradient(60% 40% at 50% 100%, rgb(var(--gold-deep)) 0%, transparent 70%);
-}
 
 .card.watched:hover::before { animation-play-state: paused; opacity: 1; }
 
@@ -1404,6 +1426,10 @@ html[data-mode="light"] .reasonchip.score   { background: rgba(176, 68, 42, .10)
      genuinely narrow. Set below by width. */
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 20px;
+  /* All card glows live in this one stacking context, at z-index -1, so
+     every halo sits beneath every card - including the cards before it in
+     the grid, which a glow used to paint over. */
+  isolation: isolate;
   padding: 0;
   /* stretch, not start: every card in a row is the height of the tallest, so
      the quicklinks line up instead of stepping. */
@@ -1480,7 +1506,11 @@ html[data-mode="light"] .reasonchip.score   { background: rgba(176, 68, 42, .10)
 
 .card {
   position: relative;
-  background: var(--panel);
+  /* The fill lives on ::after (below), not here. A backdrop blur on the card
+     itself would make the card a stacking context and pull its glow back
+     above its neighbours; on a child layer it frosts what is behind the card
+     without trapping anything. */
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
@@ -1501,7 +1531,7 @@ html[data-mode="light"] .reasonchip.score   { background: rgba(176, 68, 42, .10)
 .card:hover {
   transform: translateY(-3px);
   border-color: var(--border-strong);
-  background: var(--panel-2);
+  --card-fill-boost: .08;
   box-shadow: var(--shadow-lift), inset 0 1px 0 var(--glass-edge);
 }
 .card:active { transform: translateY(-2px) scale(.995); }
@@ -1517,7 +1547,9 @@ html[data-mode="light"] .reasonchip.score   { background: rgba(176, 68, 42, .10)
   border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;
   transition: background .3s var(--ease);
 }
-.card .thumb.hasimg { background: var(--thumb-bg); }
+.card .thumb.hasimg {
+  background: color-mix(in srgb, var(--thumb-bg) calc(var(--card-opacity) * 100%), transparent);
+}
 
 /* Hidden while an image is still loading, so cards do not flash a placeholder
    letter before the photo arrives. Shown only when there is no usable image. */
@@ -1604,6 +1636,7 @@ html[data-mode="light"] .card.glow { border-color: rgba(15, 23, 42, .20); }
 .card.glow::before {
   content: "";
   position: absolute;
+  z-index: -1;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
@@ -1631,24 +1664,9 @@ html[data-glow="solid"] .card.glow::before { animation: none; }
 
    Clipped by the card's own overflow:hidden, which is exactly what is wanted
    here - the wash stops at the rounded corner. */
-.card.glow::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: var(--glow-front);
-  mix-blend-mode: var(--glow-front-blend);
-  background:
-    radial-gradient(72% 58% at 6% 0%,   rgb(var(--glow-h1)) 0%, transparent 70%),
-    radial-gradient(72% 58% at 94% 0%,  rgb(var(--glow-h2)) 0%, transparent 70%),
-    radial-gradient(72% 58% at 94% 100%, rgb(var(--glow-h3)) 0%, transparent 70%),
-    radial-gradient(72% 58% at 6% 100%, rgb(var(--glow-h4)) 0%, transparent 70%);
-  transition: opacity .35s var(--ease);
-}
 
-/* The wash sits on the card's background, never on its content. Without this
-   the blend mode would tint the title and the price too. */
+/* Content sits above the card's glass layer (::after, z-index 0), so the
+   frost is behind the photo and the text, never over them. */
 .card .thumb, .card .body { position: relative; z-index: 1; }
 
 /* Hover lifts the bloom and holds the hue still while the card is read. */
