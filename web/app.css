@@ -694,6 +694,7 @@ body.searching .searchbox { width: 330px; border-color: var(--brand); }
 .versionline a { color: var(--amber-text); }
 
 .rangerow { display: flex; align-items: center; gap: 12px; width: 260px; }
+.rangerow.wide { width: 100%; }
 .rangerow input[type=range] { flex: 1; accent-color: var(--brand); }
 .rangerow output {
   min-width: 40px;

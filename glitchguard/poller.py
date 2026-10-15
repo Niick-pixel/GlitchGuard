@@ -243,8 +243,10 @@ class Poller:
             store.save_amazon(deal_id, result, tag, note)
 
     def _rescore(self):
-        deals = store.list_deals(limit=500)
+        deals = store.deals_to_score()
         history = store.price_history_by_asin(d.get("asin") for d in deals)
+        now = time.time()
+        updates = []
         for deal in deals:
             # This deal's own sightings are excluded, so re-listing a product
             # at the same price is not mistaken for it beating its history.
@@ -254,9 +256,11 @@ class Poller:
                 deal["hist_n"] = len(past)
                 deal["hist_low"] = past[0]
                 deal["hist_median"] = past[len(past) // 2]
-            value, tier, reasons = scoring.score(deal)
-            if value != deal.get("score") or tier != deal.get("tier"):
-                store.save_score(deal["id"], value, tier, reasons)
+            value, tier, reasons = scoring.score(deal, now)
+            if (value != deal.get("score") or tier != deal.get("tier")
+                    or reasons != deal.get("reasons")):
+                updates.append((deal["id"], value, tier, reasons))
+        store.save_scores(updates)
 
     def _note_new(self, fresh_ids, alert=True):
         # First populate: everything is "new", so an alert would be noise.
@@ -293,6 +297,9 @@ class Poller:
         raw_sources = cfg.get("alert_sources")
         alert_sources = None if raw_sources is None else set(raw_sources)
 
+        watch_words = filters.parse_keywords(cfg.get("watch_keywords"))
+        floor = filters.min_score(cfg)
+
         fresh = []
         for deal in (store.get(i) for i in fresh_ids):
             # Same rule as the list: what you have filtered out never rings.
@@ -301,6 +308,11 @@ class Poller:
             if filters.watchlist_match(deal, pinned):
                 deal["_pinned"] = True
                 fresh.append(deal)
+                continue
+            # Below the minimum score it is hidden, so it stays quiet too -
+            # unless it matches a watched word, which you asked for by name.
+            if floor and (deal.get("score") or 0) < floor \
+                    and not filters.watch_match(deal, watch_words):
                 continue
             if oldest_listed and posted(deal) < oldest_listed:
                 continue

@@ -244,6 +244,15 @@ def price_range(cfg):
     return num("min_price"), num("max_price")
 
 
+def min_score(cfg):
+    """The minimum error score to list a deal; 0 means no minimum."""
+    try:
+        value = float(cfg.get("min_score") or 0)
+    except (TypeError, ValueError):
+        return 0.0
+    return max(0.0, min(100.0, value))
+
+
 def suppressed(deal, excluded_categories, keywords, prices=(0, 0)):
     """True when a deal should not be shown - or alerted on.
 

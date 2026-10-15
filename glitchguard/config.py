@@ -90,6 +90,10 @@ DEFAULTS = {
     "exclude_keywords": "",
     # Price range for the list and for alerts. 0 means no bound.
     "min_price": 0,
+    # Hide deals whose error score is below this (0-100). Watched and pinned
+    # deals are always shown, whatever their score. 10 hides the deals with
+    # nothing to compare their price against - no list price and no history.
+    "min_score": 10,
     "max_price": 0,
     # Comma-separated words to watch for. A new deal matching one of these
     # raises its own alert with a distinct sound.

@@ -759,11 +759,13 @@ soft. Low-power mode always turns the blur off.
   narrow: anything that could plausibly be electronics is left unclassified, so
   it can never be hidden by accident. Rule changes reclassify every stored deal
   once, not only new ones.
+- **Minimum error score** - hides deals scoring below it (0-60, default 10).
+  Deals matching a watched keyword or a pinned product are always shown.
 - **Price range** - a minimum and maximum price.
 - **Hide titles containing** - comma-separated words.
 - **Hide deals older than** - the age limit.
 
-Product types and the price range also silence alerts: a deal you have filtered
+Product types, the minimum score and the price range also silence alerts: a deal you have filtered
 out never rings. The button shows how many filters are active, and **Reset**
 clears them.
 
@@ -898,9 +900,27 @@ Ordinary clearance and a real glitch look different. The score weighs:
 - large absolute savings
 - wording like "price error", "glitch" or "penny" in the listing
 - freshness, since real errors get patched fast, with a penalty once a deal is over a week old
+- the product's own price history: its lowest price so far, and how far below
+  its usual price it is now
 
 Anything at **78+** is flagged `LIKELY PRICE ERROR` in red, 58-77 is a strong deal.
 The score is derived entirely from feed data, so ranking costs no extra requests.
+
+**Every deal is scored.** Before 1.0.6 the poller re-scored only the 500
+highest-scoring deals, and a new deal starts at 0, so once more than 500 deals
+were live, new ones never made the cut. On one real database, 675 of 1,175 live
+deals had never been scored, which is why so many cards said 0 and why those
+deals could never raise a score alert. Now every live deal is re-scored each
+cycle (about 0.07s for 1,200 deals), and older stored deals are scored in
+batches in the background.
+
+**No list price, no zero.** Many feeds give only the sale price. When the product
+has a price history, its usual price stands in for the missing list price.
+With neither, the deal scores low and its reason says "No list price to compare
+against"; the default minimum score of 10 hides those.
+
+Freshness now comes from the stored posting time, not the feed's rounded "3 hr
+ago" label.
 
 ## How it stays polite
 

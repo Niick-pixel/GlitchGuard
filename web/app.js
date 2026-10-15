@@ -1234,6 +1234,8 @@ function applySettings(cfg) {
     $("keywords").value = cfg.exclude_keywords || "";
     $("minprice").value = Number(cfg.min_price) > 0 ? String(cfg.min_price) : "";
     $("maxprice").value = Number(cfg.max_price) > 0 ? String(cfg.max_price) : "";
+    $("minscore").value = String(cfg.min_score ?? 10);
+    $("o-minscore").textContent = String(cfg.min_score ?? 10);
     $("sounddiscount").value = String(cfg.sound_discount || 0);
     $("screenglow").checked = cfg.screen_glow !== false;
     $("cardglow").value = String(cfg.card_glow_discount ?? 50);
@@ -1620,6 +1622,7 @@ function updateFilterCount() {
   let n = selectedCategories().length;
   if (Number($("minprice").value) > 0) n++;
   if (Number($("maxprice").value) > 0) n++;
+  if (Number($("minscore").value) > 0) n++;
   if (($("keywords").value || "").trim()) n++;
   $("filtercount").textContent = String(n);
   $("filtercount").classList.toggle("hidden", n === 0);
@@ -1636,6 +1639,14 @@ let priceTimer = null;
     }, 450);
   }));
 
+$("minscore").addEventListener("input", () => {
+  $("o-minscore").textContent = $("minscore").value;
+});
+$("minscore").addEventListener("change", () => {
+  updateFilterCount();
+  saveSettings().then(load);
+});
+
 $("filterreset").addEventListener("click", () => {
   document.querySelectorAll("#categories input:checked").forEach((input) => {
     input.checked = false;
@@ -1643,6 +1654,8 @@ $("filterreset").addEventListener("click", () => {
   });
   $("minprice").value = "";
   $("maxprice").value = "";
+  $("minscore").value = "0";
+  $("o-minscore").textContent = "0";
   $("keywords").value = "";
   updateFilterCount();
   saveSettings().then(load);
@@ -1844,6 +1857,7 @@ function saveSettings() {
     exclude_keywords: $("keywords").value,
     min_price: Number($("minprice").value) || 0,
     max_price: Number($("maxprice").value) || 0,
+    min_score: Number($("minscore").value) || 0,
     watch_keywords: $("watchwords").value,
     watchlist: $("watchlist").value,
     discord_webhook: $("discordhook").value.trim(),

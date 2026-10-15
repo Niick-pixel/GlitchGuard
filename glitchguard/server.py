@@ -209,6 +209,9 @@ class Handler(BaseHTTPRequestHandler):
         alerts = store.list_deals(section="alerts", min_discount=min_discount,
                                   sort=sort)
         _mark_watched(everything + alerts, cfg)
+        # After marking, so a watched deal survives a low score. The Alerts
+        # tab is a record of what rang and is left alone.
+        everything = _above_min_score(everything, cfg)
         counts = {
             name: sum(1 for d in everything if store.in_section(d, name))
             for name in store.SECTIONS if name != "alerts"
@@ -303,6 +306,13 @@ def _mark_watched(deals, cfg):
             d["watched"] = filters.watch_match(d, words)
 
 
+def _above_min_score(deals, cfg):
+    floor = filters.min_score(cfg)
+    if not floor:
+        return deals
+    return [d for d in deals if d.get("watched") or (d.get("score") or 0) >= floor]
+
+
 EXPORT_COLUMNS = (
     ("title", "Title"), ("retailer", "Retailer"), ("price", "Price"),
     ("list_price", "List price"), ("discount_pct", "Discount %"),
@@ -326,6 +336,9 @@ def export_rows(section):
         exclude_keywords=keywords, max_age_hours=cfg.get("deal_ttl_hours"),
         prices=filters.price_range(cfg),
     )
+    if section != "alerts":
+        _mark_watched(deals, cfg)
+        deals = _above_min_score(deals, cfg)
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow([label for _, label in EXPORT_COLUMNS])

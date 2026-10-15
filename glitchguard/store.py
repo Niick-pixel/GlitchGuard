@@ -123,6 +123,16 @@ def _migrate(db):
     db.execute("INSERT INTO meta(key, value) VALUES('classifier_version', ?) "
                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                (filters.CLASSIFIER_VERSION,))
+
+    # New scoring rules: mark every row unscored so the poller scores them all
+    # again, a batch per cycle, rather than stalling startup on tens of
+    # thousands of rows. The old score stays visible until then.
+    have = db.execute("SELECT value FROM meta WHERE key='scoring_version'").fetchone()
+    if not have or have["value"] != scoring.SCORING_VERSION:
+        db.execute("UPDATE deals SET reasons=NULL")
+        db.execute("INSERT INTO meta(key, value) VALUES('scoring_version', ?) "
+                   "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                   (scoring.SCORING_VERSION,))
     db.commit()
 
 
@@ -373,13 +383,37 @@ def amazon_candidates(limit):
     return [r["id"] for r in rows]
 
 
-def save_score(deal_id, score, tier, reasons):
+def deals_to_score(limit=3000):
+    """Every live deal, plus a batch of any never scored.
+
+    Live deals are scored again every cycle because their age and price
+    history keep moving. This used to take the 500 highest-scoring deals
+    instead, and a new deal starts at 0 - so once more than 500 were live, new
+    deals never made the cut and sat at 0 for good: 675 of 1,175 live deals
+    had never been scored, and none of them could raise a score alert.
+    """
+    rows = conn().execute(
+        "SELECT * FROM deals WHERE gone=0 OR reasons IS NULL"
+        " ORDER BY gone ASC, (reasons IS NULL) DESC, first_seen DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    return [_to_dict(r) for r in rows]
+
+
+def save_scores(updates):
+    """[(deal_id, score, tier, reasons), ...] in one transaction."""
+    if not updates:
+        return
     db = conn()
-    db.execute(
+    db.executemany(
         "UPDATE deals SET score=?, tier=?, reasons=? WHERE id=?",
-        (score, tier, json.dumps(reasons), deal_id),
+        [(s, t, json.dumps(r), i) for i, s, t, r in updates],
     )
     db.commit()
+
+
+def save_score(deal_id, score, tier, reasons):
+    save_scores([(deal_id, score, tier, reasons)])
 
 
 def get(deal_id):

@@ -4,6 +4,11 @@ Everything here is derived from feed data, so scoring costs no extra requests.
 """
 
 import re
+import time
+
+# Bumped whenever the rules below change, so every stored deal is scored again
+# under the new rules instead of keeping whatever the old ones gave it.
+SCORING_VERSION = "2"
 
 KEYWORDS = (
     "price error", "pricing error", "priced wrong", "mispriced", "glitch",
@@ -33,7 +38,20 @@ def age_minutes(age_text):
     return int(match.group(1)) * unit if unit else None
 
 
-def score(deal):
+def _minutes_old(deal, now=None):
+    """How long ago the deal was posted.
+
+    Prefers the stored posting time to parsing the age label, which is
+    rounded ("3 hr ago") and, for rows without a posting time, only as fresh
+    as the last time the feed listed the deal.
+    """
+    posted = deal.get("posted_at")
+    if posted:
+        return max(0.0, ((now or time.time()) - posted) / 60)
+    return age_minutes(deal.get("age_text"))
+
+
+def score(deal, now=None):
     """Return (score 0-100, tier, reasons)."""
     price = deal.get("price") or 0.0
     list_price = deal.get("list_price") or 0.0
@@ -44,6 +62,18 @@ def score(deal):
     points = 0.0
     reasons = []
 
+    # Most feeds give a list price, but plenty (Walmart, Best Buy, a lot of
+    # Slickdeals) give only the sale price, which used to leave the discount at
+    # zero however cheap the thing was. When this product has a price history,
+    # its usual price stands in for the missing list price.
+    hist_n = deal.get("hist_n") or 0
+    hist_low = deal.get("hist_low")
+    hist_median = deal.get("hist_median")
+    implied = False
+    if not discount and hist_n >= 2 and hist_median and 0 < price < hist_median:
+        discount = (1 - price / hist_median) * 100
+        implied = True
+
     points += min(discount, 100) * 0.55
     if discount >= 90:
         points += 16
@@ -53,6 +83,9 @@ def score(deal):
         reasons.append(f"Steep {discount:.0f}% discount")
     elif discount >= 50:
         reasons.append(f"{discount:.0f}% off")
+    if implied and discount >= 10:
+        reasons.append(f"{discount:.0f}% below its usual ${hist_median:,.2f} "
+                       f"(no list price given)")
 
     # A few dollars against a substantial list price is the classic glitch shape.
     if list_price >= 20 and 0 < price <= 1.0:
@@ -75,7 +108,7 @@ def score(deal):
         reasons.append(f"Listing text mentions \"{hit}\"")
 
     # Real errors get patched fast, so a fresh one is worth more than an old one.
-    minutes = age_minutes(deal.get("age_text"))
+    minutes = _minutes_old(deal, now)
     if minutes is not None:
         if minutes <= 60:
             points += 11
@@ -95,15 +128,14 @@ def score(deal):
     # price_history table: hist_low and hist_median are over sightings that
     # came from other deal posts, so a deal never counts as its own history.
     # Needs at least two earlier sightings - one prior price is an anecdote.
-    hist_n = deal.get("hist_n") or 0
-    hist_low = deal.get("hist_low")
-    hist_median = deal.get("hist_median")
     if hist_n >= 2 and price and hist_low:
         if price < hist_low * 0.97:
             points += 8
             reasons.append(f"Lowest price seen for this product "
                            f"(previous low ${hist_low:,.2f}, {hist_n} sightings)")
-        if hist_median and price <= hist_median * 0.6:
+        # Skipped when the history already stood in for the list price, so
+        # one fact is not counted twice.
+        if not implied and hist_median and price <= hist_median * 0.6:
             below = round((1 - price / hist_median) * 100)
             points += 10
             reasons.append(f"{below}% below its usual ${hist_median:,.2f}")
@@ -114,5 +146,6 @@ def score(deal):
     final = max(0.0, min(100.0, round(points, 1)))
     tier = next(name for threshold, name in TIERS if final >= threshold)
     if not reasons:
-        reasons.append("Standard markdown")
+        reasons.append("Standard markdown" if discount
+                       else "No list price to compare against")
     return final, tier, reasons

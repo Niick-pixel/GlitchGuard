@@ -104,6 +104,10 @@
           <div id="categories" class="catlist compact"></div>
         </div>
         <div class="popsec">
+          <label class="poplabel" for="minscore">Minimum error score <span>watched deals always show</span></label>
+          <div class="rangerow wide"><input type="range" id="minscore" min="0" max="60" step="5" value="10"><output id="o-minscore">10</output></div>
+        </div>
+        <div class="popsec">
           <div class="poplabel">Price range <span>blank means no limit</span></div>
           <div class="pricerange">
             <label class="moneyin"><span>$</span><input type="number" id="minprice" min="0" step="1" placeholder="Min"></label>
