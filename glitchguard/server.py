@@ -207,7 +207,8 @@ class Handler(BaseHTTPRequestHandler):
         # so most alerted deals silently vanished from the one tab that
         # promises to keep them.
         alerts = store.list_deals(section="alerts", min_discount=min_discount,
-                                  sort=sort)
+                                  sort=sort,
+                                  alert_keep_hours=cfg.get("alert_keep_hours") or 0)
         _mark_watched(everything + alerts, cfg)
         # After marking, so a watched deal survives a low score. The Alerts
         # tab is a record of what rang and is left alone.
@@ -335,6 +336,7 @@ def export_rows(section):
         exclude_categories=cfg.get("excluded_categories") or (),
         exclude_keywords=keywords, max_age_hours=cfg.get("deal_ttl_hours"),
         prices=filters.price_range(cfg),
+        alert_keep_hours=cfg.get("alert_keep_hours") or 0,
     )
     if section != "alerts":
         _mark_watched(deals, cfg)

@@ -1265,6 +1265,7 @@ function applySettings(cfg) {
     $("tgchat").value = cfg.telegram_chat_id || "";
     $("dealttl").value = String(cfg.deal_ttl_hours ?? 12);
     $("alertage").value = String(cfg.alert_max_age_minutes ?? 60);
+    $("alertkeep").value = String(cfg.alert_keep_hours ?? 24);
     $("alertscore").value = String(cfg.alert_score ?? 75);
     $("o-alertscore").textContent = String(cfg.alert_score ?? 75);
     GLOW_DISCOUNT = cfg.card_glow_discount ?? 50;
@@ -1865,6 +1866,7 @@ function saveSettings() {
     telegram_chat_id: $("tgchat").value.trim(),
     deal_ttl_hours: Number($("dealttl").value),
     alert_max_age_minutes: Number($("alertage").value),
+    alert_keep_hours: Number($("alertkeep").value),
     bg_theme: document.documentElement.dataset.theme || "sage",
     card_glow: $("cardglowon").checked,
     card_glow_discount: Number($("cardglow").value),
@@ -1945,6 +1947,8 @@ $("keywords").addEventListener("input", () => {
 ["sound", "interval", "livecheck", "sounddiscount", "alertage"].forEach((id) =>
   $(id).addEventListener("change", saveSettings)
 );
+// Reloads too, so the Alerts tab and its count shrink the moment it changes.
+$("alertkeep").addEventListener("change", () => saveSettings().then(load));
 
 $("dealttl").addEventListener("change", () => {
   saveSettings();

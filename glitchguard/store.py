@@ -450,7 +450,7 @@ def in_section(deal, section):
 
 def list_deals(section="feed", min_discount=0, sort="score", limit=300,
                exclude_categories=(), exclude_keywords=(), max_age_hours=None,
-               prices=(0, 0)):
+               prices=(0, 0), alert_keep_hours=0):
     # Category and keyword exclusion is applied in Python below rather than
     # here, so there is exactly one definition of "hidden" shared with alerts.
     where = ["gone=0", "hidden=0"]
@@ -463,6 +463,11 @@ def list_deals(section="feed", min_discount=0, sort="score", limit=300,
         # and the card says they have expired.
         where = ["hidden=0", "alerted=1"]
         max_age_hours = None
+        # Its own retention instead, counted from when the alert rang rather
+        # than when the deal was posted.
+        if alert_keep_hours:
+            where.append("alerted_at >= ?")
+            args.append(time.time() - float(alert_keep_hours) * 3600)
     if max_age_hours:
         # Applied here as well as in the expiry job so the setting bites the
         # moment it is changed, instead of waiting for the next poll, and so

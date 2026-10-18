@@ -669,7 +669,7 @@ Every deal is a card showing the retailer, current price, list price and discoun
 and an **Open on … →** button that goes straight to the live product page in your
 browser, where you can confirm the real price yourself.
 
-Filter by minimum discount, and sort by score, recency, discount or saving.
+Filter by minimum discount (any, or 10% to 95%), and sort by score, recency, discount or saving.
 
 ## The Alerts tab
 
@@ -681,8 +681,13 @@ what made alert timing feel wrong.
 
 The tab keeps its own clock: **Hide deals older than** does not apply here, and
 deals that have since expired stay listed, dimmed and marked **Expired**, so a
-notification can never point at something you cannot find. **Clear history**
-empties it without touching the deals.
+notification can never point at something you cannot find.
+
+Alerts drop off by themselves once they are old enough, so the tab never needs
+clearing by hand. **Keep in Alerts tab for** (Settings -> Alerts) sets how long:
+6 hours to 30 days, or forever. The default is 1 day, and it counts from when
+the alert rang, not when the deal was posted. Only the tab entry expires; the
+deal itself is untouched. **Clear history** is still there to empty it at once.
 
 That was not true until 1.0.3. The tab was cut out of the main feed query,
 which applies the age limit and skips expired deals - so on a real install 209

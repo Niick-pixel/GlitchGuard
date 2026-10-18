@@ -129,6 +129,11 @@ DEFAULTS = {
     # it around ten hours after posting - so alerting is gated on how long ago
     # the deal was posted, not on when we happened to find it. 0 disables.
     "alert_max_age_minutes": 60,
+    # How long an alert stays in the Alerts tab, counted from when it rang.
+    # Older ones drop off by themselves so the tab never needs clearing by
+    # hand. The deals are not deleted - only their place in the tab expires.
+    # 0 keeps them forever.
+    "alert_keep_hours": 24,
     "amazon_live_check": False,
     "amazon_min_gap": 25,
     "amazon_hourly_cap": 12,
