@@ -863,7 +863,13 @@ function applyStatus(status) {
     $("laststate").textContent = status.last_error;
   } else if (status.last_ok) {
     const ago = Math.round(Date.now() / 1000 - status.last_ok);
-    $("laststate").textContent = `updated ${fmt(ago)} ago · ${status.cycles} checks`;
+    const problems = status.source_errors || [];
+    // A source that quietly stops returning deals looks exactly like a slow
+    // day, so a broken one is named here rather than only in the log.
+    $("laststate").textContent = `updated ${fmt(ago)} ago · ${status.cycles} checks` +
+      (problems.length ? ` · ⚠ ${problems.join("; ")}` : "");
+    $("laststate").title = problems.join("
+");
   }
 
   const pa = status.paapi || {};

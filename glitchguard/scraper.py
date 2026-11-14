@@ -6,8 +6,10 @@ each deal exposes a /go/<uuid> redirect that lands on the real product page.
 """
 
 import hashlib
+import json
 import re
 import time
+from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -195,24 +197,82 @@ def deal_id(url):
     return hashlib.sha1(path.encode("utf-8")).hexdigest()[:16]
 
 
+# The November 2026 redesign streams each deal's full record into the page as
+# React Server Component chunks: self.__next_f.push([1, "<escaped text>"]).
+RSC_CHUNK = re.compile(r'self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)')
+
+
+def _iso_ts(text):
+    try:
+        return datetime.fromisoformat((text or "").replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def _num_or_none(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _embedded_deals(html):
+    """{slug: record} from the data the page embeds for its own rendering.
+
+    Preferred to the visible markup: it carries the exact posting time, the
+    retailer's own link and an expiry flag, none of which the cards show.
+    Empty when the format changes again, and the markup is read instead.
+    """
+    try:
+        text = "".join(json.loads(c) for c in RSC_CHUNK.findall(html))
+    except ValueError:
+        return {}
+    out = {}
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r'\{"body":', text):
+        try:
+            record, _ = decoder.raw_decode(text, match.start())
+        except ValueError:
+            continue
+        if isinstance(record, dict) and record.get("slug"):
+            out[record["slug"]] = record
+    return out
+
+
+def _deal_link(article):
+    """The card's link to its own deal page.
+
+    Since the redesign the first link in a card is its topic tag
+    ("/deals/tag/personal-deals"), which also contains "/deals/" - taking the
+    first link silently turned every card into a duplicate of that tag page.
+    """
+    link = article.find("a", href=True,
+                        attrs={"aria-label": re.compile(r"^View deal:")})
+    if link:
+        return link
+    for link in article.find_all("a", href=True):
+        if "/deals/" in link["href"] and "/deals/tag/" not in link["href"]:
+            return link
+    return None
+
+
 def parse_listing(html):
     soup = BeautifulSoup(html, "html.parser")
+    embedded = _embedded_deals(html)
     items = []
     seen = set()
 
     for article in soup.find_all("article"):
-        link = article.find("a", href=True)
+        link = _deal_link(article)
         if not link:
             continue
         href = link["href"]
-        if "/deals/" not in href:
-            continue
         url = urljoin(config.BASE_URL, href)
         key = deal_id(url)
         if key in seen:
             continue
 
-        heading = article.find(["h2", "h3"])
+        heading = article.find(["h2", "h3"]) or link.find("p")
         title = heading.get_text(strip=True) if heading else ""
         retailer = _retailer(article, link, href)
 
@@ -232,8 +292,7 @@ def parse_listing(html):
         if img:
             image = img["src"]
 
-        seen.add(key)
-        items.append({
+        item = {
             "id": key,
             "url": url,
             "title": title,
@@ -244,7 +303,37 @@ def parse_listing(html):
             "savings": savings or 0.0,
             "image": image,
             "age_text": _age(article),
-        })
+        }
+        record = embedded.get(href.rstrip("/").rsplit("/", 1)[-1])
+        if record:
+            if record.get("isExpired"):
+                continue
+            # The record's own numbers win over reading the card: the card
+            # route takes the first "% OFF" anywhere in its text, so a title
+            # like "80% OFF SHARK..." was read as 80% when the deal is 62%.
+            now_price = _num_or_none(record.get("price"))
+            was_price = _num_or_none(record.get("originalPrice"))
+            if now_price is not None:
+                item["price"] = now_price
+            if now_price is not None and was_price and was_price > now_price:
+                item["list_price"] = was_price
+                item["discount_pct"] = round((1 - now_price / was_price) * 100, 1)
+                item["savings"] = round(was_price - now_price, 2)
+            posted = _iso_ts(record.get("createdAt"))
+            if posted:
+                item["posted_at"] = posted
+            item["description"] = (record.get("body") or "").strip()
+            direct = record.get("dealLink") or ""
+            if direct.startswith("http"):
+                item["direct_url"] = direct
+                if is_amazon(direct):
+                    item["asin"] = extract_asin(direct) or ""
+                # The retailer link is already here, so the detail page that
+                # used to be fetched for it is not needed: one request less
+                # per deal.
+                item["detail_state"] = 1
+        seen.add(key)
+        items.append(item)
     return items
 
 
@@ -272,11 +361,16 @@ def _prices(article):
         if value is None:
             continue
         classes = " ".join(span.get("class") or [])
-        if "line-through" in classes:
+        if "line-through" in classes or span.find_parent("s"):
             if list_price is None:
                 list_price = value
         elif price is None:
             price = value
+    if list_price is None:
+        # The redesign puts the was-price straight inside <s>, not in a span.
+        struck = article.find("s")
+        if struck:
+            list_price = _money(struck.get_text(" ", strip=True))
     return price, list_price
 
 

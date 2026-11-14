@@ -317,6 +317,19 @@ feed never stops the others, and each source only ever expires its own deals.
 
 Together they bring in around 150 live deals per cycle.
 
+**When a source breaks, the status line says so.** Hidden Clearances was
+redesigned in November 2026 and for about a week the app read 0 deals from it
+without saying anything: the page still loaded, so nothing looked like an error.
+Since 1.0.8, a source whose page loads with no readable deals, or whose feed
+comes back empty, is named in the status line at the top (for example
+`⚠ Hidden Clearances: page loaded but no deals could be read`). A timeout on
+Hidden Clearances also no longer cancels the rest of that cycle.
+
+Hidden Clearances now reads the deal data the page embeds for itself: exact
+posting time, the store's own link, and both prices, so its deals no longer need
+a second request each for a detail page. If that data disappears, the visible
+cards are read instead.
+
 CamelCamelCamel is the important one for finding Amazon discounts independently:
 its feed titles read `… - down 28.13% ($18.00) to $45.99 from $63.99` and the link
 contains the ASIN, so every item arrives complete — product, ASIN, both prices and

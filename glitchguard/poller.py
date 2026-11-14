@@ -88,14 +88,31 @@ class Poller:
             cold_start = store.deal_count() == 0
             fresh = []
 
+            listing_problem = None
             if cfg.get("source_hiddenclearances", True):
-                items, changed = self.scraper.fetch_listing()
-                if changed:
-                    fresh += store.upsert_listing(items, source="hiddenclearances")
+                # Isolated like the other sources: a timeout here used to end
+                # the whole cycle, so every other source skipped it too.
+                try:
+                    items, changed = self.scraper.fetch_listing()
+                    if changed:
+                        fresh += store.upsert_listing(items, source="hiddenclearances")
+                        if not items:
+                            # The page loaded but nothing on it could be read -
+                            # what a redesign looks like. This went unnoticed
+                            # for a week in November 2026, so it is now said.
+                            listing_problem = "Hidden Clearances: page loaded but no deals could be read"
+                except scraper.Blocked:
+                    raise
+                except Exception as exc:
+                    listing_problem = f"Hidden Clearances: {type(exc).__name__}"
+                    traceback.print_exc()
 
             # Extra feeds run every cycle, independently of the main listing's
             # 304 handling, and one failing feed must not stop the others.
             fresh += self._fetch_sources(cfg)
+            if listing_problem:
+                self.status["source_errors"] = [listing_problem] + (
+                    self.status["source_errors"] or [])
 
             # Age retires deals now, not absence from a rolling window.
             ttl = float(cfg.get("deal_ttl_hours", 3)) * 3600
@@ -171,6 +188,8 @@ class Poller:
             try:
                 items = source.fetch(self.scraper.session, cfg["request_timeout"])
                 fresh += store.upsert_listing(items, source=source.name)
+                if not items:
+                    errors.append(f"{source.label}: no deals in the feed")
             except Exception as exc:
                 errors.append(f"{source.label}: {type(exc).__name__}")
         self.status["source_errors"] = errors or None
