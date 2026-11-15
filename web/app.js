@@ -1795,7 +1795,11 @@ function renderUpdate(u) {
   const line = $("versionline");
   line.replaceChildren(`GlitchGuard ${u.current}`);
   const last = u.last_install;
-  if (last && last.ok && last.version === u.current) {
+  // Only for a day: the install record stays on disk, and a month-old
+  // "just updated" hid the fact that no update had arrived since.
+  const installedAt = last && Date.parse(last.at);
+  if (last && last.ok && last.version === u.current &&
+      installedAt && Date.now() - installedAt < 24 * 3600 * 1000) {
     line.append(" - just updated");
   }
   if (u.state === "downloading") {
@@ -1814,6 +1818,7 @@ function renderUpdate(u) {
     line.append(" - up to date");
   } else if (u.error) {
     line.append(` - could not check (${u.error})`);
+    if (u.url) line.append(" ", releaseLink("download it by hand", u.url));
   }
 }
 

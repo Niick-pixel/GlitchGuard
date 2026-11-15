@@ -889,6 +889,18 @@ installed at the next launch, a download with one byte flipped (refused by the
 hash), and an install deliberately broken halfway through, after the new
 `_internal` was already in place (rolled back; the old version started intact).
 
+**A second way to reach GitHub.** 1.0.7 could not connect to GitHub at all:
+every check from 18 October to 15 November 2026 failed with a bare `URLError`,
+while the same app's deal feeds worked the whole time. That copy could never
+update itself and had to be replaced by hand. The cause was inside the
+Python 3.11 build it shipped with; the 1.0.8 build (Python 3.13) connects
+normally. Since 1.0.9, if the check or a download cannot connect, it retries
+once through the same HTTP library the deal feeds use, which carries its own
+certificate bundle. An HTTP error such as a 404 is an answer, not a failed
+connection, and is not retried. When both attempts fail, the settings page shows
+the actual cause instead of just a class name, with a link to download the
+release by hand. "Just updated" now only shows for a day after an install.
+
 Switch it off under Settings -> App: **Install updates automatically** keeps the
 check but only shows a link, and **Check for updates** stops checking at all.
 The browser version never installs anything; it only shows the link.

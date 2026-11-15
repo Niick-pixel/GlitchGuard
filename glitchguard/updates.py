@@ -152,14 +152,68 @@ def _url_ok(url):
     return FEED != LATEST and url.startswith("http://127.0.0.1")
 
 
+class _RequestsBody:
+    """Just enough of urllib's response for check() and _download()."""
+
+    def __init__(self, resp):
+        self._resp = resp
+        self.status = resp.status_code
+
+    def read(self, n=-1):
+        return self._resp.raw.read(None if n is None or n < 0 else n,
+                                   decode_content=True)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self._resp.close()
+
+
 def _open(url):
+    """Open url with urllib, falling back to requests if the connection fails.
+
+    1.0.7's urllib could not reach GitHub at all - every check from 18 October
+    to 15 November ended in URLError - while the same app's requests calls to
+    the deal feeds worked throughout, so that copy could never update itself
+    and had to be replaced by hand. requests carries its own certificate
+    bundle and connection handling, so one of the two getting through is
+    enough. An HTTP error (404, 403) is an answer, not a failed connection,
+    and is not retried.
+    """
     if not _url_ok(url):
         raise ValueError(f"refusing non-HTTPS download: {url}")
-    req = urllib.request.Request(url, headers={
+    headers = {
         "Accept": "application/vnd.github+json, application/octet-stream",
         "User-Agent": f"GlitchGuard/{__version__}",
-    })
-    return urllib.request.urlopen(req, timeout=TIMEOUT)
+    }
+    try:
+        return urllib.request.urlopen(
+            urllib.request.Request(url, headers=headers), timeout=TIMEOUT)
+    except urllib.error.HTTPError:
+        raise
+    except (urllib.error.URLError, OSError) as first:
+        try:
+            import requests
+        except ImportError:
+            raise first
+        try:
+            resp = requests.get(url, headers=headers, timeout=TIMEOUT, stream=True)
+        except requests.RequestException as second:
+            # Both reasons, so the settings page can say what actually failed.
+            raise ConnectionError(f"{_reason(first)}; then {_reason(second)}") from second
+        if resp.status_code >= 400:
+            resp.close()
+            raise urllib.error.HTTPError(url, resp.status_code, resp.reason, None, None)
+        return _RequestsBody(resp)
+
+
+def _reason(exc):
+    """A short readable cause, not just the exception's class name."""
+    inner = getattr(exc, "reason", None)
+    text = str(inner if inner is not None else exc) or type(exc).__name__
+    text = re.sub(r"\s+", " ", text)
+    return text if len(text) <= 160 else text[:157] + "..."
 
 
 def _download(url, dest, limit, total=None):
@@ -201,7 +255,10 @@ def check():
         # 404 simply means no release has been published yet.
         info["error"] = None if exc.code == 404 else f"HTTP {exc.code}"
     except Exception as exc:
-        info["error"] = type(exc).__name__
+        # The cause, not just "URLError": a month of failed checks said only
+        # that, which gave nothing to go on.
+        info["error"] = _reason(exc)
+        info["url"] = f"https://github.com/{REPO}/releases/latest"
     with _lock:
         _result.update(info)
         if _result["state"] == "checking":
