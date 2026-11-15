@@ -868,8 +868,7 @@ function applyStatus(status) {
     // day, so a broken one is named here rather than only in the log.
     $("laststate").textContent = `updated ${fmt(ago)} ago · ${status.cycles} checks` +
       (problems.length ? ` · ⚠ ${problems.join("; ")}` : "");
-    $("laststate").title = problems.join("
-");
+    $("laststate").title = problems.join("\n");
   }
 
   const pa = status.paapi || {};

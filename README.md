@@ -905,6 +905,13 @@ Switch it off under Settings -> App: **Install updates automatically** keeps the
 check but only shows a link, and **Check for updates** stops checking at all.
 The browser version never installs anything; it only shows the link.
 
+**1.0.8 and 1.0.9 opened to a blank window.** A line break inside a string in
+`web/app.js` was a syntax error, and one syntax error stops the whole script, so
+the window stayed on "Loading the deal feed..." while the backend, polling and
+updates all kept working. That is also why those copies still updated
+themselves. `tools/build.ps1` now runs `tools/check_js.py` first, which parses
+every script in `web/` in headless Edge, and refuses to build if any fails.
+
 ### Publishing a release
 
 ```powershell

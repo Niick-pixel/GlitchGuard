@@ -19,6 +19,12 @@ $out = Join-Path $root "dist\GlitchGuard"
 Write-Host "Checking build dependencies..."
 & $py -m pip install --quiet --disable-pip-version-check -r (Join-Path $root "requirements-desktop.txt")
 
+# A syntax error anywhere in the UI script blanks the whole window while the
+# backend runs fine, which is how 1.0.8 and 1.0.9 shipped. Parse before building.
+Write-Host "Checking the UI scripts parse..."
+& $py (Join-Path $root "tools\check_js.py")
+if ($LASTEXITCODE -ne 0) { throw "A UI script does not parse - not building" }
+
 Write-Host "Building..."
 Push-Location $root
 try {
